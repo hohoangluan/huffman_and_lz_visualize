@@ -110,10 +110,9 @@ const generateLZWEncodeSteps = (inputStr, initialAlphabetStr) => {
 
 function LZWEncode() {
     const [inputText, setInputText] = useState("ABABCBABABCAD");
-    const [appliedText, setAppliedText] = useState(inputText);
     const [initialAlphabet, setInitialAlphabet] = useState("ABCD");
     
-    const { steps, output } = useMemo(() => generateLZWEncodeSteps(appliedText, initialAlphabet), [appliedText, initialAlphabet]);
+    const { steps, output } = useMemo(() => generateLZWEncodeSteps(inputText, initialAlphabet), [inputText, initialAlphabet]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -126,7 +125,7 @@ function LZWEncode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText, initialAlphabet]);
+    }, [inputText, initialAlphabet]);
 
     useEffect(() => {
         let interval;
@@ -382,10 +381,9 @@ const generateLZWDecodeSteps = (encodedStr, initialAlphabetStr) => {
 
 function LZWDecode() {
     const [inputText, setInputText] = useState("1, 2, 1, 2, 3, 2, 1, 2, 5, 3, 1, 4");
-    const [appliedText, setAppliedText] = useState(inputText);
     const [initialAlphabet, setInitialAlphabet] = useState("ABCD");
     
-    const { steps, codes } = useMemo(() => generateLZWDecodeSteps(inputText, initialAlphabet), [appliedText, initialAlphabet]);
+    const { steps, codes } = useMemo(() => generateLZWDecodeSteps(inputText, initialAlphabet), [inputText, initialAlphabet]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -398,7 +396,7 @@ function LZWDecode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText, initialAlphabet]);
+    }, [inputText, initialAlphabet]);
 
     useEffect(() => {
         let interval;

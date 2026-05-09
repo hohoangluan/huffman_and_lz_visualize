@@ -90,9 +90,7 @@ const generateLZ78EncodeSteps = (inputStr) => {
 
 function LZ78Encode() {
     const [inputText, setInputText] = useState("ABABCBABABCAD");
-    const [appliedText, setAppliedText] = useState(inputText);
-    
-    const { steps, output } = useMemo(() => generateLZ78EncodeSteps(appliedText), [appliedText]);
+    const { steps, output } = useMemo(() => generateLZ78EncodeSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -105,7 +103,7 @@ function LZ78Encode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
@@ -325,7 +323,7 @@ const generateLZ78DecodeSteps = (encodedStr) => {
 function LZ78Decode() {
     const [inputText, setInputText] = useState("(0, 'A')(0, 'B')(1, 'B')(3, 'C')(2, 'A')(2, 'B')(4, 'A')(0, 'D')");
     
-    const { steps, tuples } = useMemo(() => generateLZ78DecodeSteps(appliedText), [appliedText]);
+    const { steps, tuples } = useMemo(() => generateLZ78DecodeSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -338,7 +336,7 @@ function LZ78Decode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;

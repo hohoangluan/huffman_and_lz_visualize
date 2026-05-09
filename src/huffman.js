@@ -147,8 +147,7 @@ const generateHuffmanSteps = (inputStr) => {
 
 function HuffmanBuilder() {
     const [inputText, setInputText] = useState("AAAAABBCDD");
-    const [appliedText, setAppliedText] = useState(inputText);
-    const { steps, allNodes } = useMemo(() => generateHuffmanSteps(appliedText), [appliedText]);
+    const { steps, allNodes } = useMemo(() => generateHuffmanSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -161,7 +160,7 @@ function HuffmanBuilder() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
@@ -456,8 +455,7 @@ const generateHuffmanDecodeStates = (bits) => {
 
 function HuffmanAnimation() {
     const [inputBits, setInputBits] = useState("000101011011100");
-    const [appliedBits, setAppliedBits] = useState(inputBits);
-    const states = useMemo(() => generateHuffmanDecodeStates(appliedBits), [appliedBits]);
+    const states = useMemo(() => generateHuffmanDecodeStates(inputBits), [inputBits]);
     
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -469,7 +467,7 @@ function HuffmanAnimation() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedBits]);
+    }, [inputBits]);
 
     useEffect(() => {
         let interval;

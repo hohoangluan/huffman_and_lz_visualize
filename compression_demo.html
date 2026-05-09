@@ -201,8 +201,7 @@ const generateHuffmanSteps = (inputStr) => {
 
 function HuffmanBuilder() {
     const [inputText, setInputText] = useState("AAAAABBCDD");
-    const [appliedText, setAppliedText] = useState(inputText);
-    const { steps, allNodes } = useMemo(() => generateHuffmanSteps(appliedText), [appliedText]);
+    const { steps, allNodes } = useMemo(() => generateHuffmanSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -215,7 +214,7 @@ function HuffmanBuilder() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
@@ -510,8 +509,7 @@ const generateHuffmanDecodeStates = (bits) => {
 
 function HuffmanAnimation() {
     const [inputBits, setInputBits] = useState("000101011011100");
-    const [appliedBits, setAppliedBits] = useState(inputBits);
-    const states = useMemo(() => generateHuffmanDecodeStates(appliedBits), [appliedBits]);
+    const states = useMemo(() => generateHuffmanDecodeStates(inputBits), [inputBits]);
     
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -523,7 +521,7 @@ function HuffmanAnimation() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedBits]);
+    }, [inputBits]);
 
     useEffect(() => {
         let interval;
@@ -810,11 +808,9 @@ const generateLZ77EncodeSteps = (inputStr, searchSize = 8, lookaheadSize = 6) =>
 
 function LZ77Encode() {
     const [inputText, setInputText] = useState("ABABCBABABCAD");
-    const [appliedText, setAppliedText] = useState(inputText);
     const [searchSize, setSearchSize] = useState(8);
     const [lookaheadSize, setLookaheadSize] = useState(6);
-    
-    const { steps, output } = useMemo(() => generateLZ77EncodeSteps(appliedText, searchSize, lookaheadSize), [appliedText, searchSize, lookaheadSize]);
+    const { steps, output } = useMemo(() => generateLZ77EncodeSteps(inputText, searchSize, lookaheadSize), [inputText, searchSize, lookaheadSize]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -827,7 +823,7 @@ function LZ77Encode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText, searchSize, lookaheadSize]);
+    }, [inputText, searchSize, lookaheadSize]);
 
     useEffect(() => {
         let interval;
@@ -1080,7 +1076,7 @@ const generateLZ77DecodeSteps = (encodedStr) => {
 function LZ77Decode() {
     const [inputText, setInputText] = useState("(0, 0, 'A')(0, 0, 'B')(2, 1, 'C')(4, 3, 'B')(6, 2, 'C')(2, 1, 'D')");
     
-    const { steps, tuples } = useMemo(() => generateLZ77DecodeSteps(appliedText), [appliedText]);
+    const { steps, tuples } = useMemo(() => generateLZ77DecodeSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -1093,7 +1089,7 @@ function LZ77Decode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
@@ -1290,9 +1286,7 @@ const generateLZ78EncodeSteps = (inputStr) => {
 
 function LZ78Encode() {
     const [inputText, setInputText] = useState("ABABCBABABCAD");
-    const [appliedText, setAppliedText] = useState(inputText);
-    
-    const { steps, output } = useMemo(() => generateLZ78EncodeSteps(appliedText), [appliedText]);
+    const { steps, output } = useMemo(() => generateLZ78EncodeSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -1305,7 +1299,7 @@ function LZ78Encode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
@@ -1525,7 +1519,7 @@ const generateLZ78DecodeSteps = (encodedStr) => {
 function LZ78Decode() {
     const [inputText, setInputText] = useState("(0, 'A')(0, 'B')(1, 'B')(3, 'C')(2, 'A')(2, 'B')(4, 'A')(0, 'D')");
     
-    const { steps, tuples } = useMemo(() => generateLZ78DecodeSteps(appliedText), [appliedText]);
+    const { steps, tuples } = useMemo(() => generateLZ78DecodeSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -1538,7 +1532,7 @@ function LZ78Decode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
@@ -1783,10 +1777,9 @@ const generateLZWEncodeSteps = (inputStr, initialAlphabetStr) => {
 
 function LZWEncode() {
     const [inputText, setInputText] = useState("ABABCBABABCAD");
-    const [appliedText, setAppliedText] = useState(inputText);
     const [initialAlphabet, setInitialAlphabet] = useState("ABCD");
     
-    const { steps, output } = useMemo(() => generateLZWEncodeSteps(appliedText, initialAlphabet), [appliedText, initialAlphabet]);
+    const { steps, output } = useMemo(() => generateLZWEncodeSteps(inputText, initialAlphabet), [inputText, initialAlphabet]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -1799,7 +1792,7 @@ function LZWEncode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText, initialAlphabet]);
+    }, [inputText, initialAlphabet]);
 
     useEffect(() => {
         let interval;
@@ -2055,10 +2048,9 @@ const generateLZWDecodeSteps = (encodedStr, initialAlphabetStr) => {
 
 function LZWDecode() {
     const [inputText, setInputText] = useState("1, 2, 1, 2, 3, 2, 1, 2, 5, 3, 1, 4");
-    const [appliedText, setAppliedText] = useState(inputText);
     const [initialAlphabet, setInitialAlphabet] = useState("ABCD");
     
-    const { steps, codes } = useMemo(() => generateLZWDecodeSteps(inputText, initialAlphabet), [appliedText, initialAlphabet]);
+    const { steps, codes } = useMemo(() => generateLZWDecodeSteps(inputText, initialAlphabet), [inputText, initialAlphabet]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -2071,7 +2063,7 @@ function LZWDecode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText, initialAlphabet]);
+    }, [inputText, initialAlphabet]);
 
     useEffect(() => {
         let interval;

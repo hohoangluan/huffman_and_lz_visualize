@@ -114,11 +114,9 @@ const generateLZ77EncodeSteps = (inputStr, searchSize = 8, lookaheadSize = 6) =>
 
 function LZ77Encode() {
     const [inputText, setInputText] = useState("ABABCBABABCAD");
-    const [appliedText, setAppliedText] = useState(inputText);
     const [searchSize, setSearchSize] = useState(8);
     const [lookaheadSize, setLookaheadSize] = useState(6);
-    
-    const { steps, output } = useMemo(() => generateLZ77EncodeSteps(appliedText, searchSize, lookaheadSize), [appliedText, searchSize, lookaheadSize]);
+    const { steps, output } = useMemo(() => generateLZ77EncodeSteps(inputText, searchSize, lookaheadSize), [inputText, searchSize, lookaheadSize]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -131,7 +129,7 @@ function LZ77Encode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText, searchSize, lookaheadSize]);
+    }, [inputText, searchSize, lookaheadSize]);
 
     useEffect(() => {
         let interval;
@@ -384,7 +382,7 @@ const generateLZ77DecodeSteps = (encodedStr) => {
 function LZ77Decode() {
     const [inputText, setInputText] = useState("(0, 0, 'A')(0, 0, 'B')(2, 1, 'C')(4, 3, 'B')(6, 2, 'C')(2, 1, 'D')");
     
-    const { steps, tuples } = useMemo(() => generateLZ77DecodeSteps(appliedText), [appliedText]);
+    const { steps, tuples } = useMemo(() => generateLZ77DecodeSteps(inputText), [inputText]);
 
     const [step, setStep] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -397,7 +395,7 @@ function LZ77Decode() {
     useEffect(() => {
         setStep(0);
         setIsPlaying(false);
-    }, [appliedText]);
+    }, [inputText]);
 
     useEffect(() => {
         let interval;
