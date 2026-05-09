@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Demo Thuật Toán Nén Dữ Liệu</title>
+    <!-- Thư viện Tailwind CSS để style -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Thư viện React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <!-- Babel dùng để chạy code JSX trực tiếp trên trình duyệt -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background-color: #f8fafc; }
+        
+        /* Custom scrollbar for better appearance in small containers */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        
+
+// --- icons.js ---
+
+// --- CÁC ICON DÙNG CHUNG ---
+const PlayIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>;
+const PauseIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>;
+const PrevIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>;
+const NextIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>;
+const ResetIcon = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>;
+
+
+// --- huffman.js ---
+
+// ==========================================
+// COMPONENT MÃ HÓA (HUFFMAN BUILDER)
+// ==========================================
+
+const parseInput = (str) => {
+    if (!str || str.length === 0) return [];
+    const freqMap = {};
+    for (let char of str) {
+        freqMap[char] = (freqMap[char] || 0) + 1;
+    }
+    const result = [];
+    for (let char in freqMap) {
+        result.push({ id: char, label: char, f: freqMap[char], isLeaf: true });
+    }
+    return result;
+};
+
+const generateHuffmanSteps = (inputStr) => {
+    const initialNodes = parseInput(inputStr);
+    if (initialNodes.length === 0) {
+        return { steps: [], allNodes: {} };
+    }
+
+    let forest = [...initialNodes];
+    let allNodes = {};
+    initialNodes.forEach(n => allNodes[n.id] = { ...n });
+
+    let steps = [];
+    let currentEdges = [];
+    let currentVisibleNodes = new Set(initialNodes.map(n => n.id));
+
+    steps.push({
+        activeRoots: forest.map(n => n.id),
+        visibleNodes: Array.from(currentVisibleNodes),
+        edges: [],
+        highlighted: [],
+        action: "Bắt đầu tính tần suất và tạo các nút lá.",
+        queueLabel: forest.map(n => `${n.id}(${n.f})`).join(", ")
+    });
+
+    while (forest.length > 1) {
+        forest.sort((a, b) => {
+            if (a.f !== b.f) return a.f - b.f;
+            return a.id.localeCompare(b.id);
+        });
+
+        let n1 = forest.shift();
+        let n2 = forest.shift();
+
+        let leftChild, rightChild;
+        if (n1.f > n2.f) {
+            leftChild = n1; rightChild = n2;
+        } else if (n2.f > n1.f) {
+            leftChild = n2; rightChild = n1;
+        } else {
+            if (n1.id.localeCompare(n2.id) < 0) {
+                leftChild = n1; rightChild = n2;
+            } else {
+                leftChild = n2; rightChild = n1;
+            }
+        }
+
+        let parentId = leftChild.id + rightChild.id;
+        let parent = {
+            id: parentId,
+            label: parentId,
+            f: leftChild.f + rightChild.f,
+            left: leftChild.id,
+            right: rightChild.id,
+            isLeaf: false
+        };
+
+        allNodes[parentId] = parent;
+        forest.push(parent);
+        currentVisibleNodes.add(parentId);
+
+        currentEdges.push({ parent: parentId, child: leftChild.id, label: "0", isLeft: true });
+        currentEdges.push({ parent: parentId, child: rightChild.id, label: "1", isLeft: false });
+
+        let displayQueue = [...forest].sort((a, b) => {
+            if (a.f !== b.f) return a.f - b.f;
+            return a.id.localeCompare(b.id);
+        });
+
+        steps.push({
+            activeRoots: forest.map(n => n.id),
+            visibleNodes: Array.from(currentVisibleNodes),
+            edges: [...currentEdges],
+            highlighted: [parentId, leftChild.id, rightChild.id],
+            action: `Gộp 2 nút nhỏ nhất: ${leftChild.id}(${leftChild.f}) và ${rightChild.id}(${rightChild.f}) thành nút mới ${parentId}(${parent.f}).`,
+            queueLabel: displayQueue.map(n => `${n.id}(${n.f})`).join(", ")
+        });
+    }
+
+    const root = forest[0];
+    let huffmanCodes = {};
+    let encodedString = "";
+    
+    if (root) {
+        const assignCoordinates = (nodeId, x, y, xOffset) => {
+            let node = allNodes[nodeId];
+            if (!node) return;
+            node.x = x;
+            node.y = y;
+            if (node.left) assignCoordinates(node.left, x - xOffset, y + 100, xOffset * 0.55);
+            if (node.right) assignCoordinates(node.right, x + xOffset, y + 100, xOffset * 0.55);
+        };
+        assignCoordinates(root.id, 500, 60, 220);
+
+        // Tính toán bảng mã Huffman
+        const generateCodes = (nodeId, currentCode) => {
+            let node = allNodes[nodeId];
+            if (!node) return;
+            if (node.isLeaf) {
+                huffmanCodes[node.id] = currentCode;
+            } else {
+                generateCodes(node.left, currentCode + '0');
+                generateCodes(node.right, currentCode + '1');
+            }
+        };
+        generateCodes(root.id, "");
+
+        // Xử lý trường hợp chỉ có 1 loại ký tự duy nhất
+        if (Object.keys(huffmanCodes).length === 1) {
+            huffmanCodes[Object.keys(huffmanCodes)[0]] = "0";
+        }
+        
+        // Mã hóa chuỗi đầu vào
+        for (let char of inputStr) {
+            encodedString += huffmanCodes[char] || "";
+        }
+    }
+
+    steps.push({
+        activeRoots: [root?.id],
+        visibleNodes: Array.from(currentVisibleNodes),
+        edges: [...currentEdges],
+        highlighted: [root?.id],
+        action: "🎉 Hoàn tất quá trình xây dựng cây Huffman!",
+        queueLabel: root ? `${root.id}(${root.f})` : "",
+        encodedString: encodedString,
+        huffmanCodes: huffmanCodes
+    });
+
+    return { steps, allNodes };
+};
+
+function HuffmanBuilder() {
+    const [inputText, setInputText] = useState("AAAAABBCDD");
+    const [appliedText, setAppliedText] = useState(inputText);
+    const { steps, allNodes } = useMemo(() => generateHuffmanSteps(appliedText), [appliedText]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    if (!currentState) {
+        return (
+            <div className="w-full flex items-center justify-center p-4">
+                <div className="bg-white p-8 rounded-xl shadow border border-slate-200">
+                    <h2 className="text-xl text-slate-800 mb-4">Vui lòng nhập chuỗi ký tự</h2>
+                    <input 
+                        type="text" 
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        className="w-full border p-2 rounded outline-blue-500"
+                        placeholder="VD: AAAAABBCDD"
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Xây Dựng Cây Huffman</h1>
+                <p className="text-slate-500 mt-2">Dựa trên logic ưu tiên: Nhỏ nhất ghép trước, <b>lớn hơn nằm Trái, bằng nhau xếp Trái theo tên</b>.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <span className="font-semibold text-slate-700">Hình ảnh Cây (Tự động canh tọa độ)</span>
+                        <span className="text-xs font-mono bg-orange-100 text-orange-800 px-2 py-1 rounded-full border border-orange-200">
+                            Bước {currentStepIndex + 1} / {steps.length}
+                        </span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center p-4 bg-[#fcfdfd] min-h-[400px]">
+                        <svg viewBox="0 0 1000 600" className="w-full h-auto max-h-[50vh] object-contain">
+                            <defs>
+                                <filter id="glow-encode" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="6" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                                <filter id="shadow-encode">
+                                    <feDropShadow dx="0" dy="4" stdDeviation="4" floodOpacity="0.1"/>
+                                </filter>
+                            </defs>
+                            {currentState.edges.map((edge, idx) => {
+                                const p = allNodes[edge.parent];
+                                const c = allNodes[edge.child];
+                                if (!p || !c) return null;
+                                const isHighlighted = currentState.highlighted.includes(p.id) && currentState.highlighted.includes(c.id);
+                                const midX = (p.x + c.x) / 2;
+                                const midY = (p.y + c.y) / 2;
+                                const txtX = midX + (edge.isLeft ? -15 : 15);
+                                const txtY = midY - 10;
+                                return (
+                                    <g key={idx} className="transition-all duration-500 ease-in-out" style={{opacity: 1}}>
+                                        <line x1={p.x} y1={p.y} x2={c.x} y2={c.y} 
+                                            stroke={isHighlighted ? '#F97316' : '#CBD5E1'} 
+                                            strokeWidth={isHighlighted ? 3 : 2} />
+                                        <text x={txtX} y={txtY} 
+                                            fill={isHighlighted ? '#EA580C' : '#64748B'} 
+                                            className="font-bold text-lg" 
+                                            textAnchor="middle">
+                                            {edge.label}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                            {currentState.visibleNodes.map(nodeId => {
+                                const node = allNodes[nodeId];
+                                if (!node) return null;
+                                const isHighlighted = currentState.highlighted.includes(nodeId);
+                                const isLeaf = node.isLeaf;
+                                const isRootNow = currentState.activeRoots.includes(nodeId);
+                                return (
+                                    <g key={nodeId} 
+                                    className="transition-all duration-500 ease-in-out" 
+                                    style={{ transformOrigin: `${node.x}px ${node.y}px`, transform: 'scale(1)' }}>
+                                        <ellipse cx={node.x} cy={node.y} rx={55} ry={35}
+                                                fill={isHighlighted ? '#FFEDD5' : (isRootNow ? '#F0FDF4' : (isLeaf ? '#F8FAFC' : '#ffffff'))}
+                                                stroke={isHighlighted ? '#F97316' : (isRootNow ? '#22C55E' : (isLeaf ? '#94A3B8' : '#CBD5E1'))}
+                                                strokeWidth={isHighlighted ? 3 : 2}
+                                                filter="url(#shadow-encode)" />
+                                        <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central"
+                                            className={`font-mono text-base ${isHighlighted ? 'font-bold text-orange-900' : 'text-slate-800'}`}>
+                                            {node.label}({node.f})
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    </div>
+                </div>
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Nhập chuỗi ký tự bất kỳ</label>
+                        <input 
+                            type="text" 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors"
+                            placeholder="VD: AAAAABBCDD"
+                        />
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-3 font-semibold">Tần suất & Hàng đợi (Đã sắp xếp)</span>
+                        <div className="text-lg font-mono tracking-wider text-emerald-700 font-medium break-all min-h-[30px]">
+                            {currentState.queueLabel || "Hàng đợi trống"}
+                        </div>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center flex-1 min-h-[140px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-lg font-medium text-slate-800">{currentState.action}</p>
+                    </div>
+
+                    {currentState.encodedString && (
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 animate-[fadeIn_0.5s_ease-in-out]">
+                            <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Kết Quả Mã Hóa (Bảng mã & Chuỗi bit)</span>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {Object.entries(currentState.huffmanCodes).map(([char, code]) => (
+                                    <span key={char} className="text-xs font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 shadow-sm">
+                                        <b>{char}</b>: <span className="text-orange-600 font-bold">{code}</span>
+                                    </span>
+                                ))}
+                            </div>
+                            <div className="text-xl font-mono tracking-widest text-emerald-600 font-bold break-all bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                                {currentState.encodedString}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" 
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors">
+                                <ResetIcon />
+                            </button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại"
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <PrevIcon />
+                            </button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"}
+                                    className="p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95">
+                                {isPlaying ? <PauseIcon /> : <PlayIcon />}
+                            </button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới"
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <NextIcon />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ==========================================
+// COMPONENT GIẢI MÃ (HUFFMAN ANIMATION)
+// ==========================================
+
+const TREE_DATA = {
+    "ABCD": { id: "ABCD", label: "ABCD(9)", x: 500, y: 80, left: "A", right: "BCD" },
+    "A": { id: "A", label: "A(5)", x: 300, y: 220, isLeaf: true, char: "A" },
+    "BCD": { id: "BCD", label: "BCD(4)", x: 700, y: 220, left: "B", right: "CD" },
+    "B": { id: "B", label: "B(2)", x: 550, y: 360, isLeaf: true, char: "B" },
+    "CD": { id: "CD", label: "CD(2)", x: 850, y: 360, left: "C", right: "D" },
+    "C": { id: "C", label: "C(1)", x: 750, y: 500, isLeaf: true, char: "C" },
+    "D": { id: "D", label: "D(1)", x: 950, y: 500, isLeaf: true, char: "D" }
+};
+
+const EDGES = [
+    { parent: "ABCD", child: "A", label: "0" },
+    { parent: "ABCD", child: "BCD", label: "1" },
+    { parent: "BCD", child: "B", label: "0" },
+    { parent: "BCD", child: "CD", label: "1" },
+    { parent: "CD", child: "C", label: "0" },
+    { parent: "CD", child: "D", label: "1" }
+];
+
+const generateHuffmanDecodeStates = (bits) => {
+    let states = [];
+    let decoded = "";
+    let currNode = "ABCD";
+    let path = ["ABCD"];
+
+    if (!bits || bits.length === 0) {
+        return [{
+            bitIdx: 0,
+            node: "ABCD",
+            path: ["ABCD"],
+            decoded: "",
+            action: "Vui lòng nhập chuỗi bit (0 và 1) để bắt đầu.",
+            activeBit: null
+        }];
+    }
+
+    states.push({
+        bitIdx: 0,
+        node: currNode,
+        path: [...path],
+        decoded: decoded,
+        action: "Bắt đầu tại node gốc.",
+        activeBit: null
+    });
+
+    for (let i = 0; i < bits.length; i++) {
+        let bit = bits[i];
+        let nextNode = bit === '0' ? TREE_DATA[currNode].left : TREE_DATA[currNode].right;
+        
+        currNode = nextNode;
+        path.push(currNode);
+
+        if (TREE_DATA[currNode].isLeaf) {
+            decoded += TREE_DATA[currNode].char;
+            states.push({
+                bitIdx: i + 1,
+                node: currNode,
+                path: [...path],
+                decoded: decoded,
+                action: `Đọc bit '${bit}', đến lá ${TREE_DATA[currNode].char}. Giải mã thành '${TREE_DATA[currNode].char}'.`,
+                activeBit: i
+            });
+            
+            currNode = "ABCD";
+            path = ["ABCD"];
+            if (i < bits.length - 1) {
+                states.push({
+                    bitIdx: i + 1,
+                    node: currNode,
+                    path: [...path],
+                    decoded: decoded,
+                    action: "Quay lại gốc. Chuẩn bị đọc bit tiếp theo.",
+                    activeBit: null
+                });
+            }
+        } else {
+            states.push({
+                bitIdx: i + 1,
+                node: currNode,
+                path: [...path],
+                decoded: decoded,
+                action: `Đọc bit '${bit}', rẽ sang ${bit === '0' ? 'trái' : 'phải'} đến ${TREE_DATA[currNode].label}.`,
+                activeBit: i
+            });
+        }
+    }
+    
+    states.push({
+        bitIdx: bits.length,
+        node: "ABCD",
+        path: [],
+        decoded: decoded,
+        action: "🎉 Hoàn tất quá trình giải mã!",
+        activeBit: null
+    });
+    
+    return states;
+};
+
+function HuffmanAnimation() {
+    const [inputBits, setInputBits] = useState("000101011011100");
+    const [appliedBits, setAppliedBits] = useState(inputBits);
+    const states = useMemo(() => generateHuffmanDecodeStates(appliedBits), [appliedBits]);
+    
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(800);
+
+    const currentState = states[step];
+    const isFinished = step === states.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedBits]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= states.length - 2) {
+                        setIsPlaying(false);
+                        return states.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, states.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, states.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Giải Mã Huffman</h1>
+                <p className="text-slate-500 mt-2">Theo dõi luồng duyệt cây từ chuỗi bit <code className="bg-slate-100 px-2 py-1 rounded text-emerald-600 font-bold">{inputBits || "trống"}</code>.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <span className="font-semibold text-slate-700">Cây Huffman</span>
+                        <span className="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Trạng thái: Node {currentState.node}
+                        </span>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center p-4 bg-[#fcfdfd]">
+                        <svg viewBox="0 0 1000 580" className="w-full h-auto max-h-[50vh] object-contain">
+                            <defs>
+                                <filter id="glow-decode" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="6" result="blur" />
+                                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                                </filter>
+                            </defs>
+                            {EDGES.map(edge => {
+                                const p = TREE_DATA[edge.parent];
+                                const c = TREE_DATA[edge.child];
+                                
+                                const pIdx = currentState.path.indexOf(edge.parent);
+                                const cIdx = currentState.path.indexOf(edge.child);
+                                const isActiveEdge = pIdx !== -1 && cIdx !== -1 && cIdx === pIdx + 1;
+                                
+                                const midX = (p.x + c.x) / 2;
+                                const midY = (p.y + c.y) / 2;
+                                const isLeft = c.x < p.x;
+                                const txtX = midX + (isLeft ? -18 : 18);
+                                const txtY = midY - 12;
+
+                                return (
+                                    <g key={`${edge.parent}-${edge.child}`} className="transition-all duration-300">
+                                        <line x1={p.x} y1={p.y} x2={c.x} y2={c.y} 
+                                            stroke={isActiveEdge ? '#F97316' : '#CBD5E1'} 
+                                            strokeWidth={isActiveEdge ? 4 : 2} />
+                                        <text x={txtX} y={txtY} 
+                                            fill={isActiveEdge ? '#EA580C' : '#64748B'} 
+                                            className="font-bold text-xl" 
+                                            textAnchor="middle">
+                                            {edge.label}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                            {Object.values(TREE_DATA).map(node => {
+                                const isActiveNode = currentState.node === node.id;
+                                const isLeaf = node.isLeaf;
+                                return (
+                                    <g key={node.id} className="transition-all duration-300">
+                                        <ellipse cx={node.x} cy={node.y} rx={55} ry={35}
+                                                fill={isActiveNode ? '#FFEDD5' : (isLeaf ? '#E0F2FE' : '#ffffff')}
+                                                stroke={isActiveNode ? '#F97316' : (isLeaf ? '#0284C7' : '#475569')}
+                                                strokeWidth={isActiveNode ? 4 : 2}
+                                                filter={isActiveNode ? "url(#glow-decode)" : ""} />
+                                        <text x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central"
+                                            className={`font-mono text-base ${isActiveNode ? 'font-bold text-orange-900' : 'text-slate-800'}`}>
+                                            {node.label}
+                                        </text>
+                                    </g>
+                                );
+                            })}
+                        </svg>
+                    </div>
+                </div>
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[120px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Hoạt động hiện tại</span>
+                        <p className="text-lg font-medium text-slate-800">{currentState.action}</p>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Nhập chuỗi bit (0, 1)</label>
+                        <input 
+                            type="text" 
+                            value={inputBits}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/[^01]/g, '');
+                                setInputBits(val);
+                            }}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-lg font-mono tracking-widest focus:border-orange-500 focus:ring-1 focus:ring-orange-500 outline-none transition-colors"
+                            placeholder="Nhập bit..."
+                        />
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-3 font-semibold">Tiến trình đọc bit</span>
+                        <div className="text-2xl font-mono tracking-wider break-all leading-relaxed min-h-[40px]">
+                            {inputBits.split('').map((bit, idx) => {
+                                let className = "text-slate-300";
+                                if (idx < currentState.bitIdx) className = "text-emerald-500 font-semibold";
+                                if (idx === currentState.activeBit) className = "bg-orange-500 text-white rounded px-1.5 py-0.5 shadow-sm transform scale-110 inline-block font-bold";
+                                
+                                return <span key={idx} className={`inline-block mx-0.5 transition-all duration-200 ${className}`}>{bit}</span>
+                            })}
+                        </div>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-3 font-semibold">Kết quả giải mã</span>
+                        <div className="text-3xl font-mono tracking-widest text-emerald-600 font-bold break-all">
+                            {currentState.decoded || <span className="text-slate-200 font-normal">Đang chờ...</span>}
+                        </div>
+                    </div>
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tiến trình: {step} / {states.length - 1}</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={1500}>Rất chậm</option>
+                                <option value={800}>Bình thường</option>
+                                <option value={300}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" 
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors">
+                                <ResetIcon />
+                            </button>
+                            <button onClick={prevStep} disabled={step === 0} title="Lùi lại"
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <PrevIcon />
+                            </button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"}
+                                    className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-105 active:scale-95">
+                                {isPlaying ? <PauseIcon /> : <PlayIcon />}
+                            </button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới"
+                                    className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <NextIcon />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+// --- lz77.js ---
+
+// ==========================================
+// THUẬT TOÁN LZ77
+// ==========================================
+
+const generateLZ77EncodeSteps = (inputStr, searchSize = 8, lookaheadSize = 6) => {
+    let steps = [];
+    let pos = 0;
+    let output = [];
+
+    if (!inputStr) {
+        return { steps: [], output: [] };
+    }
+
+    steps.push({
+        pos: 0,
+        searchSize,
+        lookaheadSize,
+        matchOffset: 0,
+        matchLength: 0,
+        nextChar: '',
+        action: "Bắt đầu thuật toán LZ77. Khởi tạo cửa sổ trượt.",
+        currentOutput: []
+    });
+
+    while (pos < inputStr.length) {
+        let searchStart = Math.max(0, pos - searchSize);
+        let searchBuffer = inputStr.substring(searchStart, pos);
+        let lookaheadBuffer = inputStr.substring(pos, Math.min(inputStr.length, pos + lookaheadSize));
+
+        let bestOffset = 0;
+        let bestLength = 0;
+
+        // Find longest match
+        for (let i = 0; i < searchBuffer.length; i++) {
+            let length = 0;
+            while (
+                length < lookaheadBuffer.length - 1 && // Leave 1 char for nextChar unless at very end
+                searchStart + i + length < pos && // stay in search buffer (or allow overlap if standard LZ77, but standard allows overlap)
+                searchBuffer[i + length] === lookaheadBuffer[length]
+            ) {
+                // Actually LZ77 allows the match to extend into the lookahead buffer!
+                // To keep it simple visually, we restrict match to not exceed search buffer boundaries if we want,
+                // but standard LZ77 allows length > offset. Let's implement standard overlap.
+                length++;
+            }
+            // Standard overlap logic:
+            let matchLen = 0;
+            while (
+                matchLen < lookaheadBuffer.length &&
+                pos + matchLen < inputStr.length &&
+                inputStr[searchStart + i + matchLen] === inputStr[pos + matchLen]
+            ) {
+                matchLen++;
+                if (pos + matchLen >= inputStr.length) break; // Reached end of string
+            }
+
+            if (matchLen > bestLength && matchLen < lookaheadBuffer.length) { // ensure we have a next_char
+                bestLength = matchLen;
+                bestOffset = pos - (searchStart + i);
+            }
+        }
+        
+        // Handle edge case where match consumes the rest of the string exactly
+        // LZ77 always outputs (offset, length, next_char). If we are at the end, next_char might be null.
+        let nextChar = '';
+        if (pos + bestLength < inputStr.length) {
+            nextChar = inputStr[pos + bestLength];
+        } else {
+            // If the match goes all the way to the end, we need to reduce bestLength by 1 to have a next_char
+            if (bestLength > 0) {
+                bestLength--;
+                bestOffset = bestOffset; // unchanged
+                nextChar = inputStr[pos + bestLength];
+            } else {
+                nextChar = ''; // Should not happen if pos < inputStr.length and bestLength==0
+            }
+        }
+
+        let tuple = `(${bestOffset}, ${bestLength}, '${nextChar}')`;
+        let newOutput = [...output, tuple];
+
+        steps.push({
+            pos: pos,
+            searchStart: searchStart,
+            searchSize: searchSize,
+            lookaheadSize: lookaheadSize,
+            matchOffset: bestOffset,
+            matchLength: bestLength,
+            nextChar: nextChar,
+            action: bestLength > 0 
+                ? `Tìm thấy chuỗi khớp độ dài ${bestLength} cách đây ${bestOffset} ký tự. Ký tự tiếp theo là '${nextChar}'. Xuất ${tuple}.`
+                : `Không có chuỗi khớp. Ký tự hiện tại là '${nextChar}'. Xuất (0, 0, '${nextChar}').`,
+            currentOutput: newOutput
+        });
+
+        output = newOutput;
+        pos += bestLength + 1;
+    }
+
+    steps.push({
+        pos: inputStr.length,
+        searchStart: Math.max(0, inputStr.length - searchSize),
+        searchSize,
+        lookaheadSize,
+        matchOffset: 0,
+        matchLength: 0,
+        nextChar: '',
+        action: "🎉 Hoàn tất quá trình mã hóa LZ77!",
+        currentOutput: output
+    });
+
+    return { steps, output };
+};
+
+function LZ77Encode() {
+    const [inputText, setInputText] = useState("ABABCBABABCAD");
+    const [appliedText, setAppliedText] = useState(inputText);
+    const [searchSize, setSearchSize] = useState(8);
+    const [lookaheadSize, setLookaheadSize] = useState(6);
+    
+    const { steps, output } = useMemo(() => generateLZ77EncodeSteps(appliedText, searchSize, lookaheadSize), [appliedText, searchSize, lookaheadSize]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText, searchSize, lookaheadSize]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    if (!currentState) {
+        return <div className="p-4 text-center">Vui lòng nhập chuỗi ký tự</div>;
+    }
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Mã Hóa LZ77</h1>
+                <p className="text-slate-500 mt-2">Dùng cửa sổ trượt (Sliding Window) gồm <b>Search Buffer</b> (Cửa sổ tìm kiếm) và <b>Lookahead Buffer</b> (Cửa sổ nhìn trước) để tìm chuỗi lặp lại.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <span className="font-semibold text-slate-700">Mô phỏng cửa sổ trượt</span>
+                        <span className="text-xs font-mono bg-orange-100 text-orange-800 px-2 py-1 rounded-full border border-orange-200">
+                            Bước {currentStepIndex + 1} / {steps.length}
+                        </span>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#fcfdfd] min-h-[300px] overflow-x-auto">
+                        <div className="flex flex-nowrap space-x-1 mb-8">
+                            {inputText.split('').map((char, idx) => {
+                                const isSearch = idx >= currentState.searchStart && idx < currentState.pos;
+                                const isLookahead = idx >= currentState.pos && idx < currentState.pos + currentState.lookaheadSize;
+                                
+                                let matchHighlight = false;
+                                if (currentState.matchLength > 0) {
+                                    const matchStart = currentState.pos - currentState.matchOffset;
+                                    // Highlight in search buffer
+                                    if (idx >= matchStart && idx < matchStart + currentState.matchLength) {
+                                        matchHighlight = true;
+                                    }
+                                    // Highlight in lookahead buffer
+                                    if (idx >= currentState.pos && idx < currentState.pos + currentState.matchLength) {
+                                        matchHighlight = true;
+                                    }
+                                }
+
+                                const isNextChar = idx === currentState.pos + currentState.matchLength && idx < currentState.pos + currentState.lookaheadSize;
+
+                                let bgClass = "bg-white";
+                                let borderClass = "border-slate-200";
+                                let textClass = "text-slate-400";
+
+                                if (isSearch) {
+                                    bgClass = "bg-blue-50";
+                                    borderClass = "border-blue-300";
+                                    textClass = "text-blue-800";
+                                }
+                                if (isLookahead) {
+                                    bgClass = "bg-emerald-50";
+                                    borderClass = "border-emerald-300";
+                                    textClass = "text-emerald-800";
+                                }
+                                if (matchHighlight) {
+                                    bgClass = "bg-orange-500 text-white";
+                                    borderClass = "border-orange-600";
+                                    textClass = "text-white font-bold";
+                                } else if (isNextChar && !isFinished) {
+                                    bgClass = "bg-purple-500 text-white";
+                                    borderClass = "border-purple-600";
+                                    textClass = "text-white font-bold";
+                                }
+
+                                return (
+                                    <div key={idx} className="flex flex-col items-center">
+                                        <div className={`w-10 h-12 flex items-center justify-center text-xl border-2 rounded ${bgClass} ${borderClass} ${textClass} transition-colors duration-300`}>
+                                            {char}
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-1">{idx}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="flex space-x-6 text-sm font-medium">
+                            <div className="flex items-center"><span className="w-4 h-4 bg-blue-50 border border-blue-300 inline-block mr-2"></span> Search Buffer</div>
+                            <div className="flex items-center"><span className="w-4 h-4 bg-emerald-50 border border-emerald-300 inline-block mr-2"></span> Lookahead Buffer</div>
+                            <div className="flex items-center"><span className="w-4 h-4 bg-orange-500 inline-block mr-2"></span> Khớp (Match)</div>
+                            <div className="flex items-center"><span className="w-4 h-4 bg-purple-500 inline-block mr-2"></span> Ký tự tiếp theo</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Cấu hình & Đầu vào</label>
+                        <input 
+                            type="text" 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-orange-500 outline-none mb-3"
+                            placeholder="Chuỗi đầu vào..."
+                        />
+                        <div className="flex space-x-2">
+                            <div className="flex-1">
+                                <label className="text-[10px] text-slate-500 uppercase block mb-1">Search Buffer</label>
+                                <input type="number" value={searchSize} onChange={e => setSearchSize(Number(e.target.value))} className="w-full border px-2 py-1 rounded text-sm outline-none" min="1" max="20" />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-[10px] text-slate-500 uppercase block mb-1">Lookahead Buffer</label>
+                                <input type="number" value={lookaheadSize} onChange={e => setLookaheadSize(Number(e.target.value))} className="w-full border px-2 py-1 rounded text-sm outline-none" min="1" max="20" />
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[100px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-md font-medium text-slate-800">{currentState.action}</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Kết quả xuất ra (Output)</span>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-sm overflow-y-auto max-h-[150px]">
+                            {currentState.currentOutput.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {currentState.currentOutput.map((item, idx) => (
+                                        <span key={idx} className="bg-white border border-slate-300 px-2 py-1 rounded shadow-sm text-slate-700 animate-[fadeIn_0.3s_ease-in-out]">
+                                            {item}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className="text-slate-400">Chưa có kết quả...</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"><ResetIcon /></button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><PrevIcon /></button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"} className="p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-all shadow-md disabled:opacity-50 transform hover:scale-105 active:scale-95">{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><NextIcon /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const generateLZ77DecodeSteps = (encodedStr) => {
+    // Để giải mã, đầu vào thường là danh sách các tuple. 
+    // Chúng ta sẽ parse một chuỗi đại diện cho danh sách các tuple: (0,0,'A')(0,0,'B')(2,1,'C')...
+    let steps = [];
+    let tuples = [];
+    
+    // Simple parser for "(offset, length, 'char')"
+    const regex = /\((\d+),\s*(\d+),\s*'([^']*)'\)/g;
+    let match;
+    while ((match = regex.exec(encodedStr)) !== null) {
+        tuples.push({
+            offset: parseInt(match[1]),
+            length: parseInt(match[2]),
+            char: match[3]
+        });
+    }
+
+    if (tuples.length === 0) {
+        return { steps: [{ action: "Vui lòng nhập chuỗi mã hóa hợp lệ dạng (0,0,'A').", decoded: "" }], finalDecoded: "" };
+    }
+
+    let decoded = "";
+    
+    steps.push({
+        tupleIdx: 0,
+        decoded: "",
+        action: "Bắt đầu giải mã LZ77. Đọc từng bộ ba (Offset, Length, NextChar).",
+        highlightTuple: null
+    });
+
+    for (let i = 0; i < tuples.length; i++) {
+        let t = tuples[i];
+        let action = "";
+        let newDecoded = decoded;
+
+        if (t.length > 0) {
+            let start = newDecoded.length - t.offset;
+            let matchedStr = "";
+            for (let j = 0; j < t.length; j++) {
+                let char = newDecoded[start + j];
+                matchedStr += char;
+                newDecoded += char; // Cập nhật newDecoded ngay để hỗ trợ Overlap (khi length > offset)
+            }
+            if (t.char && t.char !== 'null') {
+                newDecoded += t.char;
+            }
+            action = `Đọc (${t.offset}, ${t.length}, '${t.char}'): Quay lại ${t.offset} ký tự, chép ${t.length} ký tự ('${matchedStr}'), thêm '${t.char}'.`;
+        } else {
+            if (t.char && t.char !== 'null') {
+                newDecoded += t.char;
+            }
+            action = `Đọc (0, 0, '${t.char}'): Thêm ký tự mới '${t.char}'.`;
+        }
+
+        steps.push({
+            tupleIdx: i + 1,
+            decoded: newDecoded,
+            action: action,
+            highlightTuple: i
+        });
+        
+        decoded = newDecoded;
+    }
+
+    steps.push({
+        tupleIdx: tuples.length,
+        decoded: decoded,
+        action: "🎉 Hoàn tất quá trình giải mã LZ77!",
+        highlightTuple: null
+    });
+
+    return { steps, finalDecoded: decoded, tuples };
+};
+
+function LZ77Decode() {
+    const [inputText, setInputText] = useState("(0, 0, 'A')(0, 0, 'B')(2, 1, 'C')(4, 3, 'B')(6, 2, 'C')(2, 1, 'D')");
+    
+    const { steps, tuples } = useMemo(() => generateLZ77DecodeSteps(appliedText), [appliedText]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Giải Mã LZ77</h1>
+                <p className="text-slate-500 mt-2">Dịch ngược các bộ ba <code>(Offset, Length, NextChar)</code> để tái tạo chuỗi ban đầu.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <span className="font-semibold text-slate-700">Chuỗi giải mã</span>
+                        <span className="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                            Bước {currentStepIndex + 1} / {steps.length}
+                        </span>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#fcfdfd] min-h-[300px]">
+                        <div className="text-4xl font-mono tracking-widest text-emerald-600 font-bold break-all">
+                            {currentState?.decoded || <span className="text-slate-200">Đang chờ...</span>}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Nhập chuỗi đã mã hóa</label>
+                        <textarea 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-blue-500 outline-none h-24 resize-none"
+                            placeholder="VD: (0,0,'A')(0,0,'B')..."
+                        />
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[100px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-md font-medium text-slate-800">{currentState?.action}</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Tiến trình đọc</span>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-sm overflow-y-auto max-h-[150px]">
+                            {tuples && tuples.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {tuples.map((t, idx) => (
+                                        <span key={idx} className={`border px-2 py-1 rounded shadow-sm transition-colors ${currentState?.highlightTuple === idx ? 'bg-orange-500 text-white border-orange-600 font-bold scale-110' : idx < currentState?.tupleIdx ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-white text-slate-500 border-slate-300'}`}>
+                                            ({t.offset},{t.length},'{t.char}')
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"><ResetIcon /></button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><PrevIcon /></button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"} className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all shadow-md disabled:opacity-50 transform hover:scale-105 active:scale-95">{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><NextIcon /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+// --- lz78.js ---
+
+// ==========================================
+// THUẬT TOÁN LZ78
+// ==========================================
+
+const generateLZ78EncodeSteps = (inputStr) => {
+    let steps = [];
+    let dict = {};
+    let dictArr = []; // For rendering { index, entry }
+    let nextIndex = 1;
+    let p = "";
+    let output = [];
+
+    if (!inputStr) {
+        return { steps: [], output: [] };
+    }
+
+    steps.push({
+        pos: 0,
+        dictArr: [],
+        p: "",
+        char: "",
+        action: "Bắt đầu thuật toán LZ78. Khởi tạo từ điển rỗng.",
+        currentOutput: []
+    });
+
+    for (let i = 0; i < inputStr.length; i++) {
+        let char = inputStr[i];
+        let pNext = p + char;
+
+        if (dict[pNext]) {
+            p = pNext;
+            steps.push({
+                pos: i + 1,
+                dictArr: [...dictArr],
+                p: p,
+                char: char,
+                action: `Đọc '${char}', chuỗi '${p}' đã có trong từ điển. Tiếp tục đọc ký tự tiếp theo.`,
+                currentOutput: [...output]
+            });
+        } else {
+            let prefix = p;
+            let idx = prefix === "" ? 0 : dict[prefix];
+            
+            let newEntry = { index: nextIndex, entry: pNext };
+            dict[pNext] = nextIndex;
+            dictArr.push(newEntry);
+            nextIndex++;
+
+            let tuple = `(${idx}, '${char}')`;
+            output.push(tuple);
+
+            steps.push({
+                pos: i + 1,
+                dictArr: [...dictArr],
+                p: "",
+                char: char,
+                action: `Chuỗi '${pNext}' chưa có trong từ điển. Thêm '${pNext}' vào từ điển tại vị trí ${nextIndex - 1}. Xuất ${tuple}.`,
+                currentOutput: [...output]
+            });
+
+            p = "";
+        }
+    }
+
+    if (p !== "") {
+        let idx = dict[p];
+        let tuple = `(${idx}, '')`;
+        output.push(tuple);
+        steps.push({
+            pos: inputStr.length,
+            dictArr: [...dictArr],
+            p: "",
+            char: "",
+            action: `Đã hết chuỗi nhưng còn dư '${p}'. Xuất (${idx}, '').`,
+            currentOutput: [...output]
+        });
+    }
+
+    steps.push({
+        pos: inputStr.length,
+        dictArr: [...dictArr],
+        p: "",
+        char: "",
+        action: "🎉 Hoàn tất quá trình mã hóa LZ78!",
+        currentOutput: [...output]
+    });
+
+    return { steps, output };
+};
+
+function LZ78Encode() {
+    const [inputText, setInputText] = useState("ABABCBABABCAD");
+    const [appliedText, setAppliedText] = useState(inputText);
+    
+    const { steps, output } = useMemo(() => generateLZ78EncodeSteps(appliedText), [appliedText]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    if (!currentState) {
+        return <div className="p-4 text-center">Vui lòng nhập chuỗi ký tự</div>;
+    }
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Mã Hóa LZ78</h1>
+                <p className="text-slate-500 mt-2">Duyệt chuỗi ký tự và xây dựng một <b>Từ điển (Dictionary)</b> các tiền tố đã biết.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 flex flex-col space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <span className="font-semibold text-slate-700">Dữ liệu đang xét</span>
+                            <span className="text-xs font-mono bg-orange-100 text-orange-800 px-2 py-1 rounded-full border border-orange-200">
+                                Bước {currentStepIndex + 1} / {steps.length}
+                            </span>
+                        </div>
+                        <div className="p-6 bg-[#fcfdfd] flex flex-col items-center">
+                            <div className="text-2xl font-mono tracking-widest break-all mb-6">
+                                {inputText.split('').map((char, idx) => (
+                                    <span key={idx} className={`inline-block transition-colors duration-300 ${idx < currentState.pos ? 'text-slate-300' : idx === currentState.pos ? 'bg-orange-500 text-white font-bold px-1 rounded transform scale-110' : 'text-slate-800'}`}>
+                                        {char}
+                                    </span>
+                                ))}
+                            </div>
+                            <div className="flex space-x-12">
+                                <div className="text-center">
+                                    <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">Chuỗi khớp (P)</span>
+                                    <div className="text-2xl font-mono font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 min-w-[60px] min-h-[50px]">{currentState.p || "\u00A0"}</div>
+                                </div>
+                                <div className="text-center">
+                                    <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">Ký tự đọc (C)</span>
+                                    <div className="text-2xl font-mono font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-200 min-w-[60px] min-h-[50px]">{currentState.char || "\u00A0"}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 font-semibold text-slate-700">Từ Điển (Dictionary)</div>
+                        <div className="p-4 bg-white flex-1 overflow-y-auto max-h-[300px]">
+                            {currentState.dictArr.length > 0 ? (
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                                            <th className="py-2 px-4 border-b font-semibold">Chỉ số (Index)</th>
+                                            <th className="py-2 px-4 border-b font-semibold">Chuỗi (Entry)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentState.dictArr.map((item, idx) => (
+                                            <tr key={idx} className="border-b last:border-0 hover:bg-slate-50 animate-[fadeIn_0.3s_ease-in-out]">
+                                                <td className="py-2 px-4 font-mono text-emerald-600 font-bold">{item.index}</td>
+                                                <td className="py-2 px-4 font-mono font-bold">{item.entry}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-slate-400 text-center py-8">Từ điển trống</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Chuỗi đầu vào</label>
+                        <input 
+                            type="text" 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-orange-500 outline-none"
+                            placeholder="Chuỗi đầu vào..."
+                        />
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[100px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-md font-medium text-slate-800">{currentState.action}</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Kết quả xuất ra (Output)</span>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-sm overflow-y-auto max-h-[150px]">
+                            {currentState.currentOutput.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {currentState.currentOutput.map((item, idx) => (
+                                        <span key={idx} className="bg-white border border-slate-300 px-2 py-1 rounded shadow-sm text-slate-700 animate-[fadeIn_0.3s_ease-in-out]">
+                                            {item}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className="text-slate-400">Chưa có kết quả...</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"><ResetIcon /></button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><PrevIcon /></button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"} className="p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-all shadow-md disabled:opacity-50 transform hover:scale-105 active:scale-95">{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><NextIcon /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const generateLZ78DecodeSteps = (encodedStr) => {
+    let steps = [];
+    let tuples = [];
+    
+    // Parse "(index, 'char')"
+    const regex = /\((\d+),\s*'([^']*)'\)/g;
+    let match;
+    while ((match = regex.exec(encodedStr)) !== null) {
+        tuples.push({
+            index: parseInt(match[1]),
+            char: match[2]
+        });
+    }
+
+    if (tuples.length === 0) {
+        return { steps: [{ action: "Vui lòng nhập chuỗi mã hóa hợp lệ dạng (0,'A').", decoded: "", dictArr: [] }], finalDecoded: "", tuples: [] };
+    }
+
+    let dict = { 0: "" }; // Index 0 is empty string
+    let dictArr = [];
+    let nextIndex = 1;
+    let decoded = "";
+    
+    steps.push({
+        tupleIdx: 0,
+        decoded: "",
+        dictArr: [],
+        action: "Bắt đầu giải mã LZ78. Đọc từng bộ (Index, Char).",
+        highlightTuple: null
+    });
+
+    for (let i = 0; i < tuples.length; i++) {
+        let t = tuples[i];
+        
+        let prefix = dict[t.index] !== undefined ? dict[t.index] : "";
+        let newEntry = prefix + t.char;
+        
+        decoded += newEntry;
+        
+        // Cập nhật từ điển nếu có chuỗi mới hợp lệ
+        if (newEntry !== "") {
+            dict[nextIndex] = newEntry;
+            dictArr.push({ index: nextIndex, entry: newEntry });
+            nextIndex++;
+        }
+
+        steps.push({
+            tupleIdx: i + 1,
+            decoded: decoded,
+            dictArr: [...dictArr],
+            action: `Đọc (${t.index}, '${t.char}'): Lấy chuỗi ở vị trí ${t.index} là '${prefix}', ghép với '${t.char}' thành '${newEntry}'. ${newEntry ? `Thêm vào từ điển ở vị trí ${nextIndex - 1}.` : ''}`,
+            highlightTuple: i
+        });
+    }
+
+    steps.push({
+        tupleIdx: tuples.length,
+        decoded: decoded,
+        dictArr: [...dictArr],
+        action: "🎉 Hoàn tất quá trình giải mã LZ78!",
+        highlightTuple: null
+    });
+
+    return { steps, finalDecoded: decoded, tuples };
+};
+
+function LZ78Decode() {
+    const [inputText, setInputText] = useState("(0, 'A')(0, 'B')(1, 'B')(3, 'C')(2, 'A')(2, 'B')(4, 'A')(0, 'D')");
+    
+    const { steps, tuples } = useMemo(() => generateLZ78DecodeSteps(appliedText), [appliedText]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Giải Mã LZ78</h1>
+                <p className="text-slate-500 mt-2">Đọc các bộ <code>(Index, Char)</code> để xây dựng lại từ điển và tái tạo chuỗi ban đầu.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 flex flex-col space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <span className="font-semibold text-slate-700">Chuỗi giải mã</span>
+                            <span className="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                Bước {currentStepIndex + 1} / {steps.length}
+                            </span>
+                        </div>
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#fcfdfd] min-h-[150px]">
+                            <div className="text-4xl font-mono tracking-widest text-emerald-600 font-bold break-all">
+                                {currentState?.decoded || <span className="text-slate-200">Đang chờ...</span>}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 font-semibold text-slate-700">Từ Điển Được Tái Tạo</div>
+                        <div className="p-4 bg-white flex-1 overflow-y-auto max-h-[300px]">
+                            {currentState?.dictArr && currentState.dictArr.length > 0 ? (
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                                            <th className="py-2 px-4 border-b font-semibold">Chỉ số (Index)</th>
+                                            <th className="py-2 px-4 border-b font-semibold">Chuỗi (Entry)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentState.dictArr.map((item, idx) => (
+                                            <tr key={idx} className="border-b last:border-0 hover:bg-slate-50 animate-[fadeIn_0.3s_ease-in-out]">
+                                                <td className="py-2 px-4 font-mono text-emerald-600 font-bold">{item.index}</td>
+                                                <td className="py-2 px-4 font-mono font-bold">{item.entry}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-slate-400 text-center py-8">Từ điển trống</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Nhập chuỗi đã mã hóa</label>
+                        <textarea 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-blue-500 outline-none h-24 resize-none"
+                            placeholder="VD: (0,'A')(0,'B')..."
+                        />
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[100px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-md font-medium text-slate-800">{currentState?.action}</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Tiến trình đọc</span>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-sm overflow-y-auto max-h-[150px]">
+                            {tuples && tuples.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {tuples.map((t, idx) => (
+                                        <span key={idx} className={`border px-2 py-1 rounded shadow-sm transition-colors ${currentState?.highlightTuple === idx ? 'bg-orange-500 text-white border-orange-600 font-bold scale-110' : idx < currentState?.tupleIdx ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-white text-slate-500 border-slate-300'}`}>
+                                            ({t.index},'{t.char}')
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"><ResetIcon /></button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><PrevIcon /></button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"} className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all shadow-md disabled:opacity-50 transform hover:scale-105 active:scale-95">{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><NextIcon /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+// --- lzw.js ---
+
+// ==========================================
+// THUẬT TOÁN LZW
+// ==========================================
+
+const generateLZWEncodeSteps = (inputStr, initialAlphabetStr) => {
+    let steps = [];
+    let dict = {};
+    let dictArr = [];
+    let nextIndex = 1;
+    let p = "";
+    let output = [];
+
+    // Lấy các ký tự duy nhất từ chuỗi cấu hình (hoặc từ chính inputStr nếu cấu hình rỗng)
+    let alphabet = Array.from(new Set(initialAlphabetStr.split(''))).filter(c => c.trim() !== '');
+    if (alphabet.length === 0) {
+        alphabet = Array.from(new Set(inputStr.split('')));
+    }
+    alphabet.sort();
+
+    // Khởi tạo từ điển
+    alphabet.forEach(char => {
+        dict[char] = nextIndex;
+        dictArr.push({ index: nextIndex, entry: char, isInit: true });
+        nextIndex++;
+    });
+
+    if (!inputStr) {
+        return { steps: [{ pos: 0, dictArr, p: "", char: "", action: "Vui lòng nhập chuỗi ký tự.", currentOutput: [] }], output: [] };
+    }
+
+    steps.push({
+        pos: 0,
+        dictArr: [...dictArr],
+        p: "",
+        char: "",
+        action: `Bắt đầu thuật toán LZW. Khởi tạo từ điển với các ký tự cơ sở: ${alphabet.join(', ')}.`,
+        currentOutput: []
+    });
+
+    p = inputStr[0];
+    
+    steps.push({
+        pos: 1,
+        dictArr: [...dictArr],
+        p: p,
+        char: "",
+        action: `Gán P = '${p}'.`,
+        currentOutput: []
+    });
+
+    for (let i = 1; i < inputStr.length; i++) {
+        let char = inputStr[i];
+        let pNext = p + char;
+
+        if (dict[pNext]) {
+            p = pNext;
+            steps.push({
+                pos: i + 1,
+                dictArr: [...dictArr],
+                p: p,
+                char: char,
+                action: `Đọc C = '${char}'. Chuỗi P+C = '${pNext}' ĐÃ có trong từ điển. Gán P = '${pNext}'.`,
+                currentOutput: [...output]
+            });
+        } else {
+            let outCode = dict[p];
+            output.push(outCode);
+            
+            let newEntry = { index: nextIndex, entry: pNext, isInit: false };
+            dict[pNext] = nextIndex;
+            dictArr.push(newEntry);
+            nextIndex++;
+
+            steps.push({
+                pos: i + 1,
+                dictArr: [...dictArr],
+                p: char, // p is updated to char at the end of step, but let's show action first
+                char: char,
+                action: `Đọc C = '${char}'. Chuỗi P+C = '${pNext}' CHƯA có trong từ điển. Xuất mã của P là ${outCode}. Thêm '${pNext}' vào từ điển. Gán P = '${char}'.`,
+                currentOutput: [...output]
+            });
+            p = char;
+        }
+    }
+
+    if (p !== "") {
+        let outCode = dict[p];
+        output.push(outCode);
+        steps.push({
+            pos: inputStr.length,
+            dictArr: [...dictArr],
+            p: "",
+            char: "",
+            action: `Đã hết chuỗi. Xuất mã của P ('${p}') là ${outCode}.`,
+            currentOutput: [...output]
+        });
+    }
+
+    steps.push({
+        pos: inputStr.length,
+        dictArr: [...dictArr],
+        p: "",
+        char: "",
+        action: "🎉 Hoàn tất quá trình mã hóa LZW!",
+        currentOutput: [...output]
+    });
+
+    return { steps, output };
+};
+
+function LZWEncode() {
+    const [inputText, setInputText] = useState("ABABCBABABCAD");
+    const [appliedText, setAppliedText] = useState(inputText);
+    const [initialAlphabet, setInitialAlphabet] = useState("ABCD");
+    
+    const { steps, output } = useMemo(() => generateLZWEncodeSteps(appliedText, initialAlphabet), [appliedText, initialAlphabet]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText, initialAlphabet]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    if (!currentState) return null;
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Mã Hóa LZW</h1>
+                <p className="text-slate-500 mt-2">Duyệt chuỗi ký tự và xây dựng <b>Từ điển</b>. Không cần lưu các ký tự đơn vào Output mà chỉ lưu các chỉ số (Index).</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 flex flex-col space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <span className="font-semibold text-slate-700">Dữ liệu đang xét</span>
+                            <span className="text-xs font-mono bg-orange-100 text-orange-800 px-2 py-1 rounded-full border border-orange-200">
+                                Bước {currentStepIndex + 1} / {steps.length}
+                            </span>
+                        </div>
+                        <div className="p-6 bg-[#fcfdfd] flex flex-col items-center">
+                            <div className="text-2xl font-mono tracking-widest break-all mb-6">
+                                {inputText.split('').map((char, idx) => (
+                                    <span key={idx} className={`inline-block transition-colors duration-300 ${idx < currentState.pos ? 'text-slate-300' : idx === currentState.pos ? 'bg-orange-500 text-white font-bold px-1 rounded transform scale-110' : 'text-slate-800'}`}>
+                                        {char}
+                                    </span>
+                                ))}
+                            </div>
+                            <div className="flex space-x-12">
+                                <div className="text-center">
+                                    <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">Chuỗi P</span>
+                                    <div className="text-2xl font-mono font-bold text-blue-600 bg-blue-50 px-4 py-2 rounded-lg border border-blue-200 min-w-[60px] min-h-[50px]">{currentState.p || "\u00A0"}</div>
+                                </div>
+                                <div className="text-center">
+                                    <span className="text-xs text-slate-400 uppercase font-semibold block mb-1">Ký tự C</span>
+                                    <div className="text-2xl font-mono font-bold text-emerald-600 bg-emerald-50 px-4 py-2 rounded-lg border border-emerald-200 min-w-[60px] min-h-[50px]">{currentState.char || "\u00A0"}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 font-semibold text-slate-700">Từ Điển LZW</div>
+                        <div className="p-4 bg-white flex-1 overflow-y-auto max-h-[300px]">
+                            {currentState.dictArr.length > 0 ? (
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                                            <th className="py-2 px-4 border-b font-semibold w-24">Chỉ số</th>
+                                            <th className="py-2 px-4 border-b font-semibold">Chuỗi</th>
+                                            <th className="py-2 px-4 border-b font-semibold text-right">Loại</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentState.dictArr.map((item, idx) => (
+                                            <tr key={idx} className="border-b last:border-0 hover:bg-slate-50 animate-[fadeIn_0.3s_ease-in-out]">
+                                                <td className="py-2 px-4 font-mono text-emerald-600 font-bold">{item.index}</td>
+                                                <td className="py-2 px-4 font-mono font-bold">{item.entry}</td>
+                                                <td className="py-2 px-4 text-right text-xs">
+                                                    {item.isInit ? 
+                                                        <span className="bg-slate-100 text-slate-500 px-2 py-1 rounded">Cơ sở</span> : 
+                                                        <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded">Thêm mới</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-slate-400 text-center py-8">Từ điển trống</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Cấu hình & Đầu vào</label>
+                        <input 
+                            type="text" 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-orange-500 outline-none mb-3"
+                            placeholder="Chuỗi đầu vào..."
+                        />
+                        <label className="text-[10px] text-slate-500 uppercase block mb-1">Từ điển cơ sở (các ký tự đơn)</label>
+                        <input 
+                            type="text" 
+                            value={initialAlphabet}
+                            onChange={(e) => setInitialAlphabet(e.target.value)}
+                            className="w-full border border-slate-300 rounded px-2 py-1 text-sm font-mono focus:border-blue-500 outline-none"
+                            placeholder="VD: ABCD"
+                        />
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[120px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-md font-medium text-slate-800 leading-relaxed">{currentState.action}</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Kết quả xuất ra (Các mã Index)</span>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-lg overflow-y-auto max-h-[150px]">
+                            {currentState.currentOutput.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {currentState.currentOutput.map((item, idx) => (
+                                        <span key={idx} className="bg-emerald-500 text-white font-bold border border-emerald-600 px-3 py-1 rounded shadow-sm animate-[fadeIn_0.3s_ease-in-out]">
+                                            {item}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <span className="text-slate-400 text-sm">Chưa có kết quả...</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"><ResetIcon /></button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><PrevIcon /></button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"} className="p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-full transition-all shadow-md disabled:opacity-50 transform hover:scale-105 active:scale-95">{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><NextIcon /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+const generateLZWDecodeSteps = (encodedStr, initialAlphabetStr) => {
+    let steps = [];
+    let codes = encodedStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    
+    let dict = {};
+    let dictArr = [];
+    let nextIndex = 1;
+    let decoded = "";
+
+    // Khởi tạo từ điển
+    let alphabet = Array.from(new Set(initialAlphabetStr.split(''))).filter(c => c.trim() !== '');
+    alphabet.sort();
+    
+    alphabet.forEach(char => {
+        dict[nextIndex] = char;
+        dictArr.push({ index: nextIndex, entry: char, isInit: true });
+        nextIndex++;
+    });
+
+    if (codes.length === 0) {
+        return { steps: [{ action: "Vui lòng nhập mảng mã (VD: 1, 2, 4...).", decoded: "", dictArr }], finalDecoded: "", codes: [] };
+    }
+
+    steps.push({
+        codeIdx: 0,
+        decoded: "",
+        dictArr: [...dictArr],
+        action: `Bắt đầu giải mã LZW. Khởi tạo từ điển với các ký tự cơ sở.`,
+        highlightCode: null
+    });
+
+    let oldCode = codes[0];
+    let s = dict[oldCode];
+    if (s === undefined) {
+        return { steps: [{ action: `Lỗi: Mã đầu tiên ${oldCode} không có trong từ điển cơ sở!`, decoded: "", dictArr }], finalDecoded: "", codes };
+    }
+    
+    decoded += s;
+    steps.push({
+        codeIdx: 1,
+        decoded: decoded,
+        dictArr: [...dictArr],
+        action: `Đọc mã đầu tiên ${oldCode}, tra từ điển được chuỗi '${s}'. Xuất '${s}'. OLD_CODE = ${oldCode}.`,
+        highlightCode: 0
+    });
+
+    let c = s[0];
+
+    for (let i = 1; i < codes.length; i++) {
+        let code = codes[i];
+        let action = "";
+
+        if (dict[code] !== undefined) {
+            s = dict[code];
+            action = `Đọc mã ${code}, tra từ điển được '${s}'. Xuất '${s}'. Thêm '${dict[oldCode] + s[0]}' vào từ điển. OLD_CODE = ${code}.`;
+        } else {
+            s = dict[oldCode] + c;
+            action = `Đọc mã ${code} CHƯA có trong từ điển (trường hợp cSc). Chuỗi tạo thành là '${s}'. Xuất '${s}'. Thêm '${s}' vào từ điển. OLD_CODE = ${code}.`;
+        }
+        
+        decoded += s;
+        c = s[0];
+        
+        // Cập nhật từ điển
+        let newEntry = dict[oldCode] + c;
+        dict[nextIndex] = newEntry;
+        dictArr.push({ index: nextIndex, entry: newEntry, isInit: false });
+        nextIndex++;
+        
+        oldCode = code;
+
+        steps.push({
+            codeIdx: i + 1,
+            decoded: decoded,
+            dictArr: [...dictArr],
+            action: action,
+            highlightCode: i
+        });
+    }
+
+    steps.push({
+        codeIdx: codes.length,
+        decoded: decoded,
+        dictArr: [...dictArr],
+        action: "🎉 Hoàn tất quá trình giải mã LZW!",
+        highlightCode: null
+    });
+
+    return { steps, finalDecoded: decoded, codes };
+};
+
+function LZWDecode() {
+    const [inputText, setInputText] = useState("1, 2, 1, 2, 3, 2, 1, 2, 5, 3, 1, 4");
+    const [appliedText, setAppliedText] = useState(inputText);
+    const [initialAlphabet, setInitialAlphabet] = useState("ABCD");
+    
+    const { steps, codes } = useMemo(() => generateLZWDecodeSteps(inputText, initialAlphabet), [appliedText, initialAlphabet]);
+
+    const [step, setStep] = useState(0);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [speed, setSpeed] = useState(1200);
+
+    const currentStepIndex = Math.min(step, Math.max(0, steps.length - 1));
+    const currentState = steps[currentStepIndex];
+    const isFinished = currentStepIndex === steps.length - 1;
+
+    useEffect(() => {
+        setStep(0);
+        setIsPlaying(false);
+    }, [appliedText, initialAlphabet]);
+
+    useEffect(() => {
+        let interval;
+        if (isPlaying && !isFinished) {
+            interval = setInterval(() => {
+                setStep(s => {
+                    if (s >= steps.length - 2) {
+                        setIsPlaying(false);
+                        return steps.length - 1;
+                    }
+                    return s + 1;
+                });
+            }, speed);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, isFinished, speed, steps.length]);
+
+    const togglePlay = () => setIsPlaying(!isPlaying);
+    const nextStep = () => setStep(s => Math.min(s + 1, steps.length - 1));
+    const prevStep = () => setStep(s => Math.max(s - 1, 0));
+    const reset = () => {
+        setIsPlaying(false);
+        setStep(0);
+    };
+
+    return (
+        <div className="w-full space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Mô Phỏng Giải Mã LZW</h1>
+                <p className="text-slate-500 mt-2">Dịch ngược các mã Index. Cần phải có <b>Từ điển cơ sở</b> giống hệt như lúc mã hóa.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 flex flex-col space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <span className="font-semibold text-slate-700">Chuỗi giải mã</span>
+                            <span className="text-xs font-mono bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                Bước {currentStepIndex + 1} / {steps.length}
+                            </span>
+                        </div>
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#fcfdfd] min-h-[150px]">
+                            <div className="text-4xl font-mono tracking-widest text-emerald-600 font-bold break-all">
+                                {currentState?.decoded || <span className="text-slate-200">Đang chờ...</span>}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50 font-semibold text-slate-700">Từ Điển LZW Được Tái Tạo</div>
+                        <div className="p-4 bg-white flex-1 overflow-y-auto max-h-[300px]">
+                            {currentState?.dictArr && currentState.dictArr.length > 0 ? (
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50 text-slate-500 text-xs uppercase">
+                                            <th className="py-2 px-4 border-b font-semibold w-24">Chỉ số</th>
+                                            <th className="py-2 px-4 border-b font-semibold">Chuỗi</th>
+                                            <th className="py-2 px-4 border-b font-semibold text-right">Loại</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {currentState.dictArr.map((item, idx) => (
+                                            <tr key={idx} className="border-b last:border-0 hover:bg-slate-50 animate-[fadeIn_0.3s_ease-in-out]">
+                                                <td className="py-2 px-4 font-mono text-emerald-600 font-bold">{item.index}</td>
+                                                <td className="py-2 px-4 font-mono font-bold">{item.entry}</td>
+                                                <td className="py-2 px-4 text-right text-xs">
+                                                    {item.isInit ? 
+                                                        <span className="bg-slate-100 text-slate-500 px-2 py-1 rounded">Cơ sở</span> : 
+                                                        <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">Thêm mới</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <div className="text-slate-400 text-center py-8">Từ điển trống</div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex flex-col space-y-4">
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Cấu hình & Đầu vào</label>
+                        <input 
+                            type="text" 
+                            value={inputText}
+                            onChange={(e) => setInputText(e.target.value)}
+                            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-blue-500 outline-none mb-3"
+                            placeholder="VD: 1, 2, 4..."
+                        />
+                        <label className="text-[10px] text-slate-500 uppercase block mb-1">Từ điển cơ sở (các ký tự đơn)</label>
+                        <input 
+                            type="text" 
+                            value={initialAlphabet}
+                            onChange={(e) => setInitialAlphabet(e.target.value)}
+                            className="w-full border border-slate-300 rounded px-2 py-1 text-sm font-mono focus:border-blue-500 outline-none"
+                            placeholder="VD: ABCD"
+                        />
+                    </div>
+                    
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center text-center min-h-[120px]">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider mb-2 font-semibold">Thao tác ở bước này</span>
+                        <p className="text-md font-medium text-slate-800 leading-relaxed">{currentState?.action}</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex-1 flex flex-col">
+                        <span className="text-xs text-slate-400 uppercase tracking-wider block mb-2 font-semibold">Tiến trình đọc mã</span>
+                        <div className="flex-1 bg-slate-50 border border-slate-200 rounded-lg p-3 font-mono text-sm overflow-y-auto max-h-[150px]">
+                            {codes && codes.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {codes.map((c, idx) => (
+                                        <span key={idx} className={`border px-2 py-1 rounded shadow-sm transition-colors ${currentState?.highlightCode === idx ? 'bg-blue-500 text-white border-blue-600 font-bold scale-110' : idx < currentState?.codeIdx ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : 'bg-white text-slate-500 border-slate-300'}`}>
+                                            {c}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col space-y-4">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-500 font-medium">Tốc độ chạy</span>
+                            <select value={speed} onChange={e => setSpeed(Number(e.target.value))}
+                                    className="border border-slate-300 rounded-lg px-2 py-1 bg-slate-50 text-sm outline-none focus:border-blue-500">
+                                <option value={2000}>Chậm</option>
+                                <option value={1200}>Bình thường</option>
+                                <option value={500}>Nhanh</option>
+                            </select>
+                        </div>
+                        <div className="flex justify-center space-x-3">
+                            <button onClick={reset} title="Khôi phục" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors"><ResetIcon /></button>
+                            <button onClick={prevStep} disabled={currentStepIndex === 0} title="Lùi lại" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><PrevIcon /></button>
+                            <button onClick={togglePlay} disabled={isFinished} title={isPlaying ? "Tạm dừng" : "Phát"} className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all shadow-md disabled:opacity-50 transform hover:scale-105 active:scale-95">{isPlaying ? <PauseIcon /> : <PlayIcon />}</button>
+                            <button onClick={nextStep} disabled={isFinished} title="Tiến tới" className="p-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full transition-colors disabled:opacity-50"><NextIcon /></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+// --- main.js ---
+
+// ==========================================
+// MAIN APP
+// ==========================================
+
+function App() {
+    const [activeAlgo, setActiveAlgo] = useState('huffman');
+    const [activeMode, setActiveMode] = useState('encode');
+
+    const renderContent = () => {
+        if (activeAlgo === 'huffman') {
+            return activeMode === 'encode' ? <HuffmanBuilder /> : <HuffmanAnimation />;
+        }
+        if (activeAlgo === 'lz77') {
+            return activeMode === 'encode' ? <LZ77Encode /> : <LZ77Decode />;
+        }
+        if (activeAlgo === 'lz78') {
+            return activeMode === 'encode' ? <LZ78Encode /> : <LZ78Decode />;
+        }
+        if (activeAlgo === 'lzw') {
+            return activeMode === 'encode' ? <LZWEncode /> : <LZWDecode />;
+        }
+        return null;
+    };
+
+    return (
+        <div className="font-sans pb-10">
+            {/* Top Navigation - Algorithms */}
+            <div className="bg-slate-900 text-white py-4 shadow-md sticky top-0 z-50">
+                <div className="max-w-6xl mx-auto px-4 md:px-8 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+                    <div className="text-xl font-bold tracking-wider text-orange-400">
+                        COMPRESSION<span className="text-white">DEMO</span>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-2">
+                        {['huffman', 'lz77', 'lz78', 'lzw'].map(algo => (
+                            <button 
+                                key={algo}
+                                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all uppercase tracking-wider ${activeAlgo === algo ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                                onClick={() => setActiveAlgo(algo)}
+                            >
+                                {algo}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            <div className="max-w-6xl mx-auto pt-8 px-4 md:px-8">
+                {/* Second-level Navigation - Mode */}
+                <div className="flex justify-center space-x-4 mb-8">
+                    <button 
+                        className={`px-6 py-2.5 rounded-full font-bold text-md transition-all ${activeMode === 'encode' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                        onClick={() => setActiveMode('encode')}
+                    >
+                        Thuật toán Mã hóa (Encode)
+                    </button>
+                    <button 
+                        className={`px-6 py-2.5 rounded-full font-bold text-md transition-all ${activeMode === 'decode' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-200'}`}
+                        onClick={() => setActiveMode('decode')}
+                    >
+                        Thuật toán Giải mã (Decode)
+                    </button>
+                </div>
+
+                {/* Main Content */}
+                <div className="animate-[fadeIn_0.3s_ease-in-out]">
+                    {renderContent()}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+        // Render React App
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
