@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo nén dữ liệu — Huffman &amp; LZ77</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --soft: #f1f5f9;
+    --line: #e2e8f0;
+    --line2: #cbd5e1;
+    --txt: #1e293b;
+    --muted: #94a3b8;
+    --muted2: #64748b;
+    --accent: #f97316;       /* orange-500 */
+    --accent-d: #ea580c;
+    --emerald: #10b981;
+    --emerald-d: #059669;
+    --blue: #3b82f6;
+    --blue-d: #2563eb;
+    --navy: #0f172a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--txt);
+    min-height: 100vh;
+  }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--soft); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* top nav (giống compression_demo.html) */
+  .topnav {
+    background: var(--navy); color: #fff; padding: 16px 0;
+    box-shadow: 0 4px 6px rgba(0,0,0,.07); position: sticky; top: 0; z-index: 50;
+  }
+  .topnav .inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 24px;
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px;
+  }
+  .logo { font-size: 20px; font-weight: 800; letter-spacing: 2px; color: var(--accent); }
+  .logo span { color: #fff; }
+  .subtitle { color: var(--muted); font-size: 13px; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 48px; }
+
+  /* input bar */
+  .inputbar {
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 16px; padding: 18px; margin-bottom: 24px; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+  input[type="text"], input[type="number"] {
+    background: var(--card); border: 1px solid var(--line2); color: var(--txt);
+    border-radius: 10px; padding: 10px 12px; font-family: Consolas, monospace; font-size: 15px;
+    outline: none; margin-top: 6px; transition: .15s;
+  }
+  input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #f9731622; }
+  input[type="number"] { width: 80px; }
+  .grow { flex: 1; min-width: 220px; }
+  .grow input { width: 100%; }
+
+  /* tabs (mode buttons rounded-full) */
+  .tabs { display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; }
+  .tab {
+    padding: 11px 26px; cursor: pointer; border-radius: 999px; font-weight: 700; font-size: 15px;
+    background: var(--card); border: 1px solid var(--line); color: var(--muted2); transition: .2s;
+  }
+  .tab:hover { background: var(--soft); }
+  .tab.active { background: var(--accent); color: #fff; border-color: transparent; box-shadow: 0 8px 18px #f9731633; }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+    padding: 22px; margin-bottom: 22px; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .panel h2 { margin: 0 0 6px; font-size: 18px; font-weight: 800; color: var(--txt); }
+  .panel .desc { color: var(--muted2); font-size: 13px; margin: 0 0 14px; }
+  .hidden { display: none; }
+
+  /* controls */
+  .controls { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; margin-top: 18px; }
+  .controls button {
+    background: var(--soft); border: 1px solid var(--line); color: var(--txt);
+    width: 46px; height: 46px; border-radius: 50%; font-size: 18px; cursor: pointer; transition: .15s;
+  }
+  .controls button:hover:not(:disabled) { background: #e2e8f0; transform: translateY(-2px); }
+  .controls button:disabled { opacity: .4; cursor: not-allowed; }
+  .controls .play {
+    background: var(--accent); border: none; color: #fff; width: 54px; height: 54px; font-size: 22px;
+    box-shadow: 0 8px 18px #f9731640;
+  }
+  .controls .play:hover:not(:disabled) { background: var(--accent-d); }
+  .controls select { background: var(--card); border: 1px solid var(--line2); color: var(--txt); border-radius: 8px; padding: 8px 10px; }
+  .stepbadge {
+    font-family: Consolas, monospace; font-size: 13px; color: var(--accent-d);
+    background: #fff7ed; border: 1px solid #fed7aa; padding: 5px 12px; border-radius: 999px;
+  }
+
+  .action {
+    text-align: center; min-height: 24px; font-size: 15px; margin: 14px 0; color: var(--txt);
+    padding: 12px; background: var(--soft); border-radius: 12px; border: 1px solid var(--line);
+  }
+
+  svg { width: 100%; height: auto; max-height: 50vh; display: block; }
+
+  .qbox { margin-top: 12px; background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 12px; padding: 12px; }
+  .qbox label { font-size: 11px; color: var(--emerald-d); text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+  .queue { font-family: Consolas, monospace; color: var(--emerald-d); word-break: break-all; margin-top: 4px; font-size: 15px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  .chip {
+    font-family: Consolas, monospace; font-size: 13px; background: var(--soft);
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; color: var(--txt);
+  }
+  .chip b { color: var(--accent-d); }
+  .encoded {
+    font-family: Consolas, monospace; font-size: 18px; letter-spacing: 2px; color: var(--emerald-d);
+    word-break: break-all; background: #ecfdf5; border: 1px solid #d1fae5; border-radius: 12px;
+    padding: 14px; margin-top: 12px; font-weight: 700;
+  }
+
+  /* LZ77 sliding window */
+  .stream { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 22px 0 12px; }
+  .cell {
+    width: 40px; height: 48px; display: flex; align-items: center; justify-content: center;
+    font-family: Consolas, monospace; font-size: 18px; border-radius: 8px;
+    border: 2px solid var(--line2); background: var(--card); position: relative; transition: .2s; color: var(--txt);
+  }
+  .cell .idx { position: absolute; top: -16px; font-size: 10px; color: var(--muted); }
+  .cell.search { background: #eff6ff; border-color: #60a5fa; }
+  .cell.look { background: #fff7ed; border-color: #fb923c; }
+  .cell.match { background: #d1fae5; border-color: var(--emerald); color: var(--emerald-d); font-weight: 700; }
+  .cell.cur { box-shadow: 0 0 0 3px #f9731666; }
+  .legend { display: flex; gap: 18px; justify-content: center; font-size: 12px; color: var(--muted2); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-family: Consolas, monospace; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: center; }
+  th { background: var(--soft); color: var(--muted2); font-weight: 600; }
+
+  /* comparison */
+  .bars { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
+  .barrow .lbl { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; color: var(--muted2); }
+  .bartrack { background: var(--soft); border-radius: 8px; height: 30px; overflow: hidden; border: 1px solid var(--line); }
+  .barfill { height: 100%; border-radius: 8px; transition: width .6s ease; display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 700; color: #fff; white-space: nowrap; }
+  .bf-orig { background: linear-gradient(90deg, #94a3b8, #64748b); }
+  .bf-huff { background: linear-gradient(90deg, var(--accent), var(--accent-d)); }
+  .bf-lz   { background: linear-gradient(90deg, var(--blue), var(--blue-d)); }
+</style>
+</head>
+<body>
+<div class="topnav">
+  <div class="inner">
+    <div class="logo">COMPRESSION<span>DEMO</span></div>
+    <div class="subtitle">Huffman Coding &amp; LZ77 — minh họa từng bước</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="inputbar">
+    <div class="field grow">
+      <label>Chuỗi đầu vào (dùng chung)</label><br>
+      <input type="text" id="input" value="ABABCBABABCAD">
+    </div>
+    <div class="field">
+      <label>Search size (LZ77)</label><br>
+      <input type="number" id="searchSize" value="8" min="1" max="64">
+    </div>
+    <div class="field">
+      <label>Lookahead (LZ77)</label><br>
+      <input type="number" id="lookSize" value="6" min="2" max="64">
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="huffman">🌳 Huffman</div>
+    <div class="tab" data-tab="lz77">🪟 LZ77</div>
+  </div>
+
+  <!-- ===================== HUFFMAN ===================== -->
+  <div id="view-huffman">
+    <div class="panel">
+      <h2>Xây dựng cây Huffman</h2>
+      <p class="desc">Nhỏ nhất gộp trước · tần suất lớn hơn nằm trái · bằng nhau xếp theo tên · cạnh trái = 0, phải = 1.</p>
+      <div class="action" id="h-action">—</div>
+      <svg id="h-svg" viewBox="0 0 1000 600"></svg>
+      <div class="qbox">
+        <label>Hàng đợi ưu tiên (đã sắp xếp)</label>
+        <div class="queue" id="h-queue">—</div>
+      </div>
+      <div class="controls">
+        <span class="stepbadge" id="h-badge">0 / 0</span>
+        <button id="h-reset" title="Khôi phục">⟲</button>
+        <button id="h-prev" title="Lùi">‹</button>
+        <button class="play" id="h-play" title="Phát">▶</button>
+        <button id="h-next" title="Tiến">›</button>
+        <select id="h-speed">
+          <option value="2000">Chậm</option>
+          <option value="1100" selected>Bình thường</option>
+          <option value="450">Nhanh</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Kết quả mã hóa</h2>
+      <div class="chips" id="h-codes"></div>
+      <div class="encoded" id="h-encoded">—</div>
+    </div>
+  </div>
+
+  <!-- ===================== LZ77 ===================== -->
+  <div id="view-lz77" class="hidden">
+    <div class="panel">
+      <h2>Cửa sổ trượt LZ77</h2>
+      <p class="desc">Tìm chuỗi khớp dài nhất trong search buffer, xuất bộ ba (offset, length, next_char).</p>
+      <div class="action" id="l-action">—</div>
+      <div class="legend">
+        <span><i class="dot" style="background:#60a5fa"></i> Search buffer</span>
+        <span><i class="dot" style="background:#fb923c"></i> Lookahead</span>
+        <span><i class="dot" style="background:#10b981"></i> Chuỗi khớp</span>
+      </div>
+      <div class="stream" id="l-stream"></div>
+      <div style="text-align:center;font-family:Consolas,monospace;color:var(--accent-d);min-height:20px" id="l-match">—</div>
+      <div class="controls">
+        <span class="stepbadge" id="l-badge">0 / 0</span>
+        <button id="l-reset" title="Khôi phục">⟲</button>
+        <button id="l-prev" title="Lùi">‹</button>
+        <button class="play" id="l-play" title="Phát">▶</button>
+        <button id="l-next" title="Tiến">›</button>
+        <select id="l-speed">
+          <option value="2000">Chậm</option>
+          <option value="1100" selected>Bình thường</option>
+          <option value="450">Nhanh</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Các token xuất ra <span style="font-weight:400;color:var(--muted2);font-size:13px">(offset, length, next_char)</span></h2>
+      <table id="l-tokens">
+        <thead><tr><th>#</th><th>offset</th><th>length</th><th>next_char</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===================== COMPARISON ===================== -->
+  <div class="panel">
+    <h2>So sánh tỉ lệ nén <span style="font-weight:400;color:var(--muted2);font-size:13px">(trên cùng chuỗi đầu vào)</span></h2>
+    <div class="bars" id="cmp-bars"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   THUẬT TOÁN HUFFMAN  (port khớp huffman.py)
+   ============================================================ */
+function huffmanBuild(text) {
+  if (!text) return { steps: [], nodes: {}, codes: {}, encoded: "" };
+
+  const freq = {};
+  for (const ch of text) freq[ch] = (freq[ch] || 0) + 1;
+
+  const nodes = {};
+  let forest = [];
+  for (const ch in freq) {
+    const n = { id: ch, f: freq[ch], isLeaf: true, char: ch };
+    nodes[ch] = n; forest.push(n);
+  }
+
+  const steps = [];
+  const visible = new Set(forest.map(n => n.id));
+  const edges = [];
+  const sortForest = arr => arr.slice().sort((a, b) => a.f !== b.f ? a.f - b.f : (a.id < b.id ? -1 : 1));
+
+  steps.push({
+    visible: [...visible], edges: [], highlighted: [],
+    action: "Tính tần suất, tạo các nút lá.",
+    queue: sortForest(forest).map(n => `${n.id}(${n.f})`).join(", ")
+  });
+
+  while (forest.length > 1) {
+    forest = sortForest(forest);
+    const n1 = forest.shift();
+    const n2 = forest.shift();
+
+    let left, right;
+    if (n1.f > n2.f) { left = n1; right = n2; }
+    else if (n2.f > n1.f) { left = n2; right = n1; }
+    else { if (n1.id < n2.id) { left = n1; right = n2; } else { left = n2; right = n1; } }
+
+    const parent = { id: left.id + right.id, f: left.f + right.f, isLeaf: false, left: left.id, right: right.id };
+    nodes[parent.id] = parent;
+    forest.push(parent);
+    visible.add(parent.id);
+    edges.push({ parent: parent.id, child: left.id, label: "0", isLeft: true });
+    edges.push({ parent: parent.id, child: right.id, label: "1", isLeft: false });
+
+    steps.push({
+      visible: [...visible], edges: edges.slice(),
+      highlighted: [parent.id, left.id, right.id],
+      action: `Gộp ${left.id}(${left.f}) + ${right.id}(${right.f}) → ${parent.id}(${parent.f}).`,
+      queue: sortForest(forest).map(n => `${n.id}(${n.f})`).join(", ")
+    });
+  }
+
+  const root = forest[0];
+  const codes = {};
+  let encoded = "";
+  if (root) {
+    (function assign(id, x, y, off) {
+      const nd = nodes[id]; if (!nd) return;
+      nd.x = x; nd.y = y;
+      if (nd.left) assign(nd.left, x - off, y + 95, off * 0.55);
+      if (nd.right) assign(nd.right, x + off, y + 95, off * 0.55);
+    })(root.id, 500, 55, 230);
+
+    (function gen(id, code) {
+      const nd = nodes[id]; if (!nd) return;
+      if (nd.isLeaf) codes[nd.char] = code;
+      else { gen(nd.left, code + "0"); gen(nd.right, code + "1"); }
+    })(root.id, "");
+
+    if (Object.keys(codes).length === 1) codes[Object.keys(codes)[0]] = "0";
+    for (const ch of text) encoded += codes[ch] || "";
+
+    steps.push({
+      visible: [...visible], edges: edges.slice(), highlighted: [root.id],
+      action: "🎉 Hoàn tất xây dựng cây Huffman!",
+      queue: `${root.id}(${root.f})`, encoded, codes
+    });
+  }
+  return { steps, nodes, codes, encoded };
+}
+
+/* ============================================================
+   THUẬT TOÁN LZ77  (port khớp lz77.py)
+   ============================================================ */
+function lz77Build(text, searchSize, lookSize) {
+  const steps = [];
+  const tokens = [];
+  if (!text) return { steps: [{ pos: 0, searchStart: 0, lookEnd: 0, matchOffset: 0, matchLength: 0, nextChar: "", tokens: [], action: "Nhập chuỗi để bắt đầu." }], tokens };
+
+  const n = text.length;
+  let pos = 0;
+  steps.push({ pos: 0, searchStart: 0, lookEnd: 0, matchOffset: 0, matchLength: 0, nextChar: "", tokens: [], action: "Khởi tạo cửa sổ trượt." });
+
+  while (pos < n) {
+    const searchStart = Math.max(0, pos - searchSize);
+    const lookEnd = Math.min(n, pos + lookSize);
+    const lookLen = lookEnd - pos;
+
+    let bestOffset = 0, bestLength = 0;
+    for (let i = searchStart; i < pos; i++) {
+      let m = 0;
+      while (m < lookLen && pos + m < n && text[i + m] === text[pos + m]) m++;
+      if (m > bestLength && m < lookLen) { bestLength = m; bestOffset = pos - i; }
+    }
+
+    let nextChar;
+    if (pos + bestLength < n) nextChar = text[pos + bestLength];
+    else if (bestLength > 0) { bestLength--; nextChar = text[pos + bestLength]; }
+    else nextChar = "";
+
+    tokens.push({ offset: bestOffset, length: bestLength, nextChar });
+    steps.push({
+      pos, searchStart, lookEnd,
+      matchOffset: bestOffset, matchLength: bestLength, nextChar,
+      tokens: tokens.slice(),
+      action: bestLength > 0
+        ? `Khớp dài ${bestLength}, lùi ${bestOffset}. Ký tự kế '${nextChar}'. Xuất (${bestOffset}, ${bestLength}, '${nextChar}').`
+        : `Không khớp. Xuất (0, 0, '${nextChar}').`
+    });
+    pos += bestLength + 1;
+  }
+
+  steps.push({ pos: n, searchStart: Math.max(0, n - searchSize), lookEnd: n, matchOffset: 0, matchLength: 0, nextChar: "", tokens: tokens.slice(), action: "🎉 Hoàn tất mã hóa LZ77!" });
+  return { steps, tokens };
+}
+
+/* ============================================================
+   PLAYER CHUNG
+   ============================================================ */
+function makePlayer(prefix, render, getSteps) {
+  let step = 0, steps = [], timer = null, speed = 1100;
+  const $ = id => document.getElementById(prefix + id);
+
+  function clamp() { step = Math.max(0, Math.min(step, steps.length - 1)); }
+  function update() {
+    clamp();
+    render(steps[step], step, steps.length);
+    $("badge").textContent = `${step + 1} / ${steps.length}`;
+    const fin = step >= steps.length - 1;
+    $("prev").disabled = step === 0;
+    $("next").disabled = fin;
+    $("play").disabled = fin;
+  }
+  function stop() { if (timer) { clearInterval(timer); timer = null; } $("play").textContent = "▶"; }
+  function play() {
+    if (timer) { stop(); return; }
+    if (step >= steps.length - 1) step = 0;
+    $("play").textContent = "⏸";
+    timer = setInterval(() => {
+      if (step >= steps.length - 1) { stop(); return; }
+      step++; update();
+    }, speed);
+  }
+  function reload() { steps = getSteps(); step = 0; stop(); update(); }
+
+  $("play").onclick = play;
+  $("next").onclick = () => { stop(); step++; update(); };
+  $("prev").onclick = () => { stop(); step--; update(); };
+  $("reset").onclick = () => { stop(); step = 0; update(); };
+  $("speed").onchange = e => { speed = +e.target.value; if (timer) { stop(); play(); } };
+
+  return { reload };
+}
+
+/* ============================================================
+   RENDER HUFFMAN  (palette light)
+   ============================================================ */
+let huffData = { nodes: {} };
+function renderHuffman(state, idx, total) {
+  if (!state) { document.getElementById("h-svg").innerHTML = ""; document.getElementById("h-action").textContent = "Nhập chuỗi."; return; }
+  const nodes = huffData.nodes;
+  const hl = state.highlighted || [];
+  const isRoot = idx === total - 1;
+  let svg = "";
+
+  for (const e of state.edges) {
+    const p = nodes[e.parent], c = nodes[e.child];
+    if (!p || !c || p.x == null || c.x == null) continue;
+    const on = hl.includes(p.id) && hl.includes(c.id);
+    const mx = (p.x + c.x) / 2, my = (p.y + c.y) / 2;
+    const tx = mx + (e.isLeft ? -16 : 16), ty = my - 8;
+    svg += `<line x1="${p.x}" y1="${p.y}" x2="${c.x}" y2="${c.y}" stroke="${on ? '#f97316' : '#cbd5e1'}" stroke-width="${on ? 3 : 2}"/>`;
+    svg += `<text x="${tx}" y="${ty}" fill="${on ? '#ea580c' : '#64748b'}" font-size="20" font-weight="bold" text-anchor="middle">${e.label}</text>`;
+  }
+  for (const id of state.visible) {
+    const nd = nodes[id];
+    if (!nd || nd.x == null) continue;
+    const on = hl.includes(id);
+    const rootNode = isRoot && id === (state.highlighted[0]);
+    let fill = "#ffffff", stroke = "#cbd5e1";
+    if (nd.isLeaf) { fill = "#f8fafc"; stroke = "#94a3b8"; }
+    if (rootNode) { fill = "#f0fdf4"; stroke = "#22c55e"; }
+    if (on && !rootNode) { fill = "#ffedd5"; stroke = "#f97316"; }
+    svg += `<ellipse cx="${nd.x}" cy="${nd.y}" rx="52" ry="32" fill="${fill}" stroke="${stroke}" stroke-width="${on ? 3 : 2}"/>`;
+    svg += `<text x="${nd.x}" y="${nd.y}" fill="#1e293b" font-size="16" font-family="Consolas,monospace" text-anchor="middle" dominant-baseline="central">${nd.id}(${nd.f})</text>`;
+  }
+  document.getElementById("h-svg").innerHTML = svg;
+  document.getElementById("h-action").textContent = state.action;
+  document.getElementById("h-queue").textContent = state.queue || "—";
+
+  const codesDiv = document.getElementById("h-codes");
+  const encDiv = document.getElementById("h-encoded");
+  if (state.codes) {
+    codesDiv.innerHTML = Object.keys(state.codes).sort()
+      .map(ch => `<span class="chip"><b>${ch}</b> → ${state.codes[ch]}</span>`).join("");
+    encDiv.textContent = state.encoded || "—";
+  } else {
+    codesDiv.innerHTML = "<span style='color:var(--muted)'>Chạy hết các bước để xem bảng mã…</span>";
+    encDiv.textContent = "—";
+  }
+}
+
+/* ============================================================
+   RENDER LZ77
+   ============================================================ */
+function renderLZ77(state, idx, total) {
+  const text = document.getElementById("input").value;
+  const stream = document.getElementById("l-stream");
+  let html = "";
+  for (let i = 0; i < text.length; i++) {
+    const cls = ["cell"];
+    if (i >= state.searchStart && i < state.pos) cls.push("search");
+    if (i >= state.pos && i < state.lookEnd) cls.push("look");
+    if (state.matchLength > 0 && i >= state.pos && i < state.pos + state.matchLength) cls.push("match");
+    if (i === state.pos) cls.push("cur");
+    html += `<div class="${cls.join(' ')}"><span class="idx">${i}</span>${text[i]}</div>`;
+  }
+  stream.innerHTML = html || "<span style='color:var(--muted)'>—</span>";
+  document.getElementById("l-action").textContent = state.action;
+  document.getElementById("l-match").textContent =
+    state.matchLength > 0 ? `match: offset=${state.matchOffset}, length=${state.matchLength}, next='${state.nextChar}'` :
+    (state.nextChar ? `literal: '${state.nextChar}'` : "—");
+
+  const tb = document.querySelector("#l-tokens tbody");
+  tb.innerHTML = (state.tokens || []).map((t, i) =>
+    `<tr><td>${i + 1}</td><td>${t.offset}</td><td>${t.length}</td><td>'${t.nextChar}'</td></tr>`).join("");
+}
+
+/* ============================================================
+   SO SÁNH NÉN
+   ============================================================ */
+function renderComparison() {
+  const text = document.getElementById("input").value;
+  const searchSize = +document.getElementById("searchSize").value;
+  const lookSize = +document.getElementById("lookSize").value;
+
+  const orig = text.length * 8;
+  const h = huffmanBuild(text);
+  const huffBits = h.encoded.length;
+
+  const lz = lz77Build(text, searchSize, lookSize);
+  const offBits = Math.max(1, Math.ceil(Math.log2(searchSize + 1)));
+  const lenBits = Math.max(1, Math.ceil(Math.log2(lookSize + 1)));
+  const lzBits = lz.tokens.length * (offBits + lenBits + 8);
+
+  const max = Math.max(orig, huffBits, lzBits, 1);
+  const pct = v => Math.max(4, (v / max) * 100);
+  const ratio = v => orig ? (v / orig * 100).toFixed(1) + "%" : "—";
+
+  document.getElementById("cmp-bars").innerHTML = `
+    <div class="barrow">
+      <div class="lbl"><span>Gốc (8 bit/ký tự)</span><span>${orig} bit</span></div>
+      <div class="bartrack"><div class="barfill bf-orig" style="width:${pct(orig)}%">100%</div></div>
+    </div>
+    <div class="barrow">
+      <div class="lbl"><span>Huffman</span><span>${huffBits} bit — ${ratio(huffBits)}</span></div>
+      <div class="bartrack"><div class="barfill bf-huff" style="width:${pct(huffBits)}%">${ratio(huffBits)}</div></div>
+    </div>
+    <div class="barrow">
+      <div class="lbl"><span>LZ77 (ước lượng)</span><span>${lzBits} bit — ${ratio(lzBits)}</span></div>
+      <div class="bartrack"><div class="barfill bf-lz" style="width:${pct(lzBits)}%">${ratio(lzBits)}</div></div>
+    </div>`;
+}
+
+/* ============================================================
+   KHỞI TẠO
+   ============================================================ */
+const huffPlayer = makePlayer("h-", renderHuffman, () => {
+  const text = document.getElementById("input").value;
+  huffData = huffmanBuild(text);
+  return huffData.steps.length ? huffData.steps : [{ visible: [], edges: [], highlighted: [], action: "Nhập chuỗi.", queue: "" }];
+});
+
+const lzPlayer = makePlayer("l-", renderLZ77, () => {
+  const text = document.getElementById("input").value;
+  const searchSize = +document.getElementById("searchSize").value;
+  const lookSize = +document.getElementById("lookSize").value;
+  return lz77Build(text, searchSize, lookSize).steps;
+});
+
+function reloadAll() {
+  huffPlayer.reload();
+  lzPlayer.reload();
+  renderComparison();
+}
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    const t = tab.dataset.tab;
+    document.getElementById("view-huffman").classList.toggle("hidden", t !== "huffman");
+    document.getElementById("view-lz77").classList.toggle("hidden", t !== "lz77");
+  };
+});
+
+let deb;
+["input", "searchSize", "lookSize"].forEach(id => {
+  document.getElementById(id).addEventListener("input", () => {
+    clearTimeout(deb); deb = setTimeout(reloadAll, 250);
+  });
+});
+
+reloadAll();
+</script>
+</body>
+</html>
