@@ -21,6 +21,10 @@
     --blue: #3b82f6;
     --blue-d: #2563eb;
     --navy: #0f172a;
+    --violet: #8b5cf6;
+    --violet-d: #7c3aed;
+    --rose: #f43f5e;
+    --rose-d: #e11d48;
   }
   * { box-sizing: border-box; }
   body {
@@ -35,7 +39,6 @@
   ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 4px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
-  /* top nav (giống compression_demo.html) */
   .topnav {
     background: var(--navy); color: #fff; padding: 16px 0;
     box-shadow: 0 4px 6px rgba(0,0,0,.07); position: sticky; top: 0; z-index: 50;
@@ -57,17 +60,18 @@
     border-radius: 16px; padding: 18px; margin-bottom: 24px; box-shadow: 0 1px 2px rgba(0,0,0,.04);
   }
   .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
-  input[type="text"], input[type="number"] {
+  input[type="text"], input[type="number"], textarea {
     background: var(--card); border: 1px solid var(--line2); color: var(--txt);
     border-radius: 10px; padding: 10px 12px; font-family: Consolas, monospace; font-size: 15px;
     outline: none; margin-top: 6px; transition: .15s;
   }
-  input[type="text"]:focus, input[type="number"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #f9731622; }
+  input[type="text"]:focus, input[type="number"]:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #f9731622; }
   input[type="number"] { width: 80px; }
+  textarea { resize: vertical; min-height: 60px; width: 100%; line-height: 1.5; }
   .grow { flex: 1; min-width: 220px; }
   .grow input { width: 100%; }
 
-  /* tabs (mode buttons rounded-full) */
+  /* tabs */
   .tabs { display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; }
   .tab {
     padding: 11px 26px; cursor: pointer; border-radius: 999px; font-weight: 700; font-size: 15px;
@@ -97,10 +101,17 @@
     box-shadow: 0 8px 18px #f9731640;
   }
   .controls .play:hover:not(:disabled) { background: var(--accent-d); }
+  .controls .play.decode-play {
+    background: var(--violet); box-shadow: 0 8px 18px #8b5cf640;
+  }
+  .controls .play.decode-play:hover:not(:disabled) { background: var(--violet-d); }
   .controls select { background: var(--card); border: 1px solid var(--line2); color: var(--txt); border-radius: 8px; padding: 8px 10px; }
   .stepbadge {
     font-family: Consolas, monospace; font-size: 13px; color: var(--accent-d);
     background: #fff7ed; border: 1px solid #fed7aa; padding: 5px 12px; border-radius: 999px;
+  }
+  .stepbadge.decode-badge {
+    color: var(--violet-d); background: #f5f3ff; border-color: #ddd6fe;
   }
 
   .action {
@@ -126,6 +137,66 @@
     padding: 14px; margin-top: 12px; font-weight: 700;
   }
 
+  /* Decode input bar */
+  .decode-inputbar {
+    display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+    background: #faf5ff; border: 1px solid #ddd6fe;
+    border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(139,92,246,.06);
+  }
+  .decode-inputbar .field label { color: var(--violet-d); }
+  .decode-inputbar input[type="text"]:focus, .decode-inputbar textarea:focus {
+    border-color: var(--violet); box-shadow: 0 0 0 3px #8b5cf622;
+  }
+  .btn-fill-encode {
+    padding: 9px 18px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    background: linear-gradient(135deg, var(--violet), var(--violet-d)); color: #fff;
+    border: none; cursor: pointer; transition: .2s; white-space: nowrap;
+    box-shadow: 0 4px 12px #8b5cf633;
+  }
+  .btn-fill-encode:hover { transform: translateY(-1px); box-shadow: 0 6px 16px #8b5cf644; }
+  .btn-fill-encode:active { transform: translateY(0); }
+  .btn-reload-decode {
+    padding: 9px 18px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    background: var(--violet); color: #fff;
+    border: none; cursor: pointer; transition: .2s; white-space: nowrap;
+    box-shadow: 0 4px 12px #8b5cf633;
+  }
+  .btn-reload-decode:hover { transform: translateY(-1px); box-shadow: 0 6px 16px #8b5cf644; }
+
+  .error-msg {
+    color: var(--rose-d); background: #fff1f2; border: 1px solid #fecdd3; border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; margin-top: 8px; display: none;
+  }
+  .error-msg.show { display: block; }
+
+  /* Decode bit stream */
+  .bitstream {
+    display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin: 16px 0 12px;
+    font-family: Consolas, monospace; font-size: 20px; letter-spacing: 1px;
+  }
+  .bitchar {
+    width: 28px; height: 36px; display: flex; align-items: center; justify-content: center;
+    border-radius: 6px; transition: .15s; font-weight: 700;
+    background: var(--soft); border: 1px solid var(--line); color: var(--muted2);
+  }
+  .bitchar.consumed { background: #ddd6fe; border-color: #a78bfa; color: var(--violet-d); }
+  .bitchar.current { background: #fbbf24; border-color: #f59e0b; color: #78350f; box-shadow: 0 0 0 3px #fbbf2466; }
+  .bitchar.future { background: var(--soft); color: var(--line2); }
+
+  /* Decode output */
+  .decode-output {
+    font-family: Consolas, monospace; font-size: 22px; letter-spacing: 3px; color: var(--violet-d);
+    word-break: break-all; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 12px;
+    padding: 14px; margin-top: 12px; font-weight: 700; min-height: 50px;
+    display: flex; flex-wrap: wrap; gap: 2px; align-items: center;
+  }
+  .decode-char {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 2px 6px; border-radius: 6px; transition: .2s;
+  }
+  .decode-char.new { background: #fef3c7; border: 1px solid #fbbf24; color: #92400e; }
+  .decode-char.done { background: transparent; }
+
   /* LZ77 sliding window */
   .stream { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 22px 0 12px; }
   .cell {
@@ -138,6 +209,8 @@
   .cell.look { background: #fff7ed; border-color: #fb923c; }
   .cell.match { background: #d1fae5; border-color: var(--emerald); color: var(--emerald-d); font-weight: 700; }
   .cell.cur { box-shadow: 0 0 0 3px #f9731666; }
+  .cell.copied { background: #ddd6fe; border-color: var(--violet); color: var(--violet-d); font-weight: 700; }
+  .cell.newchar { background: #fef3c7; border-color: #fbbf24; color: #92400e; font-weight: 700; }
   .legend { display: flex; gap: 18px; justify-content: center; font-size: 12px; color: var(--muted2); flex-wrap: wrap; }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
@@ -145,6 +218,8 @@
   table { width: 100%; border-collapse: collapse; margin-top: 10px; font-family: Consolas, monospace; font-size: 14px; }
   th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: center; }
   th { background: var(--soft); color: var(--muted2); font-weight: 600; }
+  tr.active-row { background: #f5f3ff; }
+  tr.done-row { opacity: 0.5; }
 
   /* comparison */
   .bars { display: flex; flex-direction: column; gap: 16px; margin-top: 14px; }
@@ -154,20 +229,34 @@
   .bf-orig { background: linear-gradient(90deg, #94a3b8, #64748b); }
   .bf-huff { background: linear-gradient(90deg, var(--accent), var(--accent-d)); }
   .bf-lz   { background: linear-gradient(90deg, var(--blue), var(--blue-d)); }
+
+  /* section divider */
+  .section-divider {
+    display: flex; align-items: center; gap: 14px; margin: 28px 0 20px;
+  }
+  .section-divider::before, .section-divider::after {
+    content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--line2), transparent);
+  }
+  .section-divider .tag {
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;
+    padding: 6px 16px; border-radius: 999px; white-space: nowrap;
+  }
+  .tag-encode { background: #fff7ed; color: var(--accent-d); border: 1px solid #fed7aa; }
+  .tag-decode { background: #f5f3ff; color: var(--violet-d); border: 1px solid #ddd6fe; }
 </style>
 </head>
 <body>
 <div class="topnav">
   <div class="inner">
     <div class="logo">COMPRESSION<span>DEMO</span></div>
-    <div class="subtitle">Huffman Coding &amp; LZ77 — minh họa từng bước</div>
+    <div class="subtitle">Huffman Coding &amp; LZ77 — minh họa từng bước (Encode &amp; Decode)</div>
   </div>
 </div>
 
 <div class="wrap">
   <div class="inputbar">
     <div class="field grow">
-      <label>Chuỗi đầu vào (dùng chung)</label><br>
+      <label>Chuỗi đầu vào (dùng chung cho Encode)</label><br>
       <input type="text" id="input" value="ABABCBABABCAD">
     </div>
     <div class="field">
@@ -187,6 +276,7 @@
 
   <!-- ===================== HUFFMAN ===================== -->
   <div id="view-huffman">
+    <div class="section-divider"><span class="tag tag-encode">⬆ Encode — Mã hóa</span></div>
     <div class="panel">
       <h2>Xây dựng cây Huffman</h2>
       <p class="desc">Nhỏ nhất gộp trước · tần suất lớn hơn nằm trái · bằng nhau xếp theo tên · cạnh trái = 0, phải = 1.</p>
@@ -214,10 +304,49 @@
       <div class="chips" id="h-codes"></div>
       <div class="encoded" id="h-encoded">—</div>
     </div>
+
+    <!-- HUFFMAN DECODE -->
+    <div class="section-divider"><span class="tag tag-decode">⬇ Decode — Giải mã</span></div>
+    <div class="decode-inputbar">
+      <div class="field grow">
+        <label>Chuỗi bit cần giải mã</label><br>
+        <input type="text" id="hd-bits-input" placeholder="VD: 0010110010101111001010">
+      </div>
+      <div class="field" style="min-width:260px; flex:1;">
+        <label>Bảng mã (mỗi cặp: KÝ_TỰ=MÃ, phân tách bằng dấu phẩy hoặc xuống dòng)</label><br>
+        <textarea id="hd-codes-input" placeholder="VD: A=00, B=01, C=10, D=11"></textarea>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; padding-bottom:2px;">
+        <button class="btn-fill-encode" id="hd-fill-from-encode" title="Tự động điền từ kết quả Encode phía trên">📋 Lấy từ Encode</button>
+        <button class="btn-reload-decode" id="hd-reload-btn" title="Chạy lại giải mã">▶ Giải mã</button>
+      </div>
+    </div>
+    <div class="error-msg" id="hd-error"></div>
+    <div class="panel">
+      <h2>🔓 Giải mã Huffman</h2>
+      <p class="desc">Duyệt chuỗi bit, đi theo cây Huffman: bit 0 → trái, bit 1 → phải. Khi tới lá → xuất ký tự, quay lại gốc.</p>
+      <div class="action" id="hd-action">—</div>
+      <svg id="hd-svg" viewBox="0 0 1000 600"></svg>
+      <div class="bitstream" id="hd-bitstream"></div>
+      <div class="decode-output" id="hd-output"><span style="color:var(--muted)">Nhập chuỗi bit và bảng mã, rồi nhấn "Giải mã"…</span></div>
+      <div class="controls">
+        <span class="stepbadge decode-badge" id="hd-badge">0 / 0</span>
+        <button id="hd-reset" title="Khôi phục">⟲</button>
+        <button id="hd-prev" title="Lùi">‹</button>
+        <button class="play decode-play" id="hd-play" title="Phát">▶</button>
+        <button id="hd-next" title="Tiến">›</button>
+        <select id="hd-speed">
+          <option value="2000">Chậm</option>
+          <option value="1100" selected>Bình thường</option>
+          <option value="450">Nhanh</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <!-- ===================== LZ77 ===================== -->
   <div id="view-lz77" class="hidden">
+    <div class="section-divider"><span class="tag tag-encode">⬆ Encode — Mã hóa</span></div>
     <div class="panel">
       <h2>Cửa sổ trượt LZ77</h2>
       <p class="desc">Tìm chuỗi khớp dài nhất trong search buffer, xuất bộ ba (offset, length, next_char).</p>
@@ -249,6 +378,49 @@
         <tbody></tbody>
       </table>
     </div>
+
+    <!-- LZ77 DECODE -->
+    <div class="section-divider"><span class="tag tag-decode">⬇ Decode — Giải mã</span></div>
+    <div class="decode-inputbar">
+      <div class="field grow">
+        <label>Danh sách token cần giải mã (VD: (0,0,A)(0,0,B)(2,2,C)…)</label><br>
+        <input type="text" id="ld-tokens-input" placeholder="VD: (0,0,A)(0,0,B)(2,2,C)(4,3,A)(6,2,A)(0,0,D)">
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; padding-bottom:2px;">
+        <button class="btn-fill-encode" id="ld-fill-from-encode" title="Tự động điền từ kết quả Encode phía trên">📋 Lấy từ Encode</button>
+        <button class="btn-reload-decode" id="ld-reload-btn" title="Chạy lại giải mã">▶ Giải mã</button>
+      </div>
+    </div>
+    <div class="error-msg" id="ld-error"></div>
+    <div class="panel">
+      <h2>🔓 Giải mã LZ77</h2>
+      <p class="desc">Đọc từng token (offset, length, next_char). Nếu length > 0: sao chép 'length' ký tự từ vị trí lùi 'offset'. Sau đó thêm 'next_char'.</p>
+      <div class="action" id="ld-action">—</div>
+      <div class="legend">
+        <span><i class="dot" style="background:#8b5cf6"></i> Sao chép từ offset</span>
+        <span><i class="dot" style="background:#fbbf24"></i> Ký tự mới (next_char)</span>
+      </div>
+      <div class="stream" id="ld-stream"></div>
+      <div class="controls">
+        <span class="stepbadge decode-badge" id="ld-badge">0 / 0</span>
+        <button id="ld-reset" title="Khôi phục">⟲</button>
+        <button id="ld-prev" title="Lùi">‹</button>
+        <button class="play decode-play" id="ld-play" title="Phát">▶</button>
+        <button id="ld-next" title="Tiến">›</button>
+        <select id="ld-speed">
+          <option value="2000">Chậm</option>
+          <option value="1100" selected>Bình thường</option>
+          <option value="450">Nhanh</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>Token đang xử lý</h2>
+      <table id="ld-tokens">
+        <thead><tr><th>#</th><th>offset</th><th>length</th><th>next_char</th><th>Trạng thái</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
   </div>
 
   <!-- ===================== COMPARISON ===================== -->
@@ -263,7 +435,7 @@
    THUẬT TOÁN HUFFMAN  (port khớp huffman.py)
    ============================================================ */
 function huffmanBuild(text) {
-  if (!text) return { steps: [], nodes: {}, codes: {}, encoded: "" };
+  if (!text) return { steps: [], nodes: {}, codes: {}, encoded: "", root: null };
 
   const freq = {};
   for (const ch of text) freq[ch] = (freq[ch] || 0) + 1;
@@ -337,7 +509,231 @@ function huffmanBuild(text) {
       queue: `${root.id}(${root.f})`, encoded, codes
     });
   }
-  return { steps, nodes, codes, encoded };
+  return { steps, nodes, codes, encoded, root: root ? root.id : null };
+}
+
+/* ============================================================
+   XÂY CÂY HUFFMAN TỪ BẢNG MÃ (cho Decode)
+   Tạo cây nhị phân từ bảng mã {ký_tự: chuỗi_bit}.
+   ============================================================ */
+function buildTreeFromCodes(codes) {
+  const nodes = {};
+  let nextInternalId = 0;
+
+  // Tạo nút gốc
+  const rootId = "__root__";
+  nodes[rootId] = { id: rootId, f: 0, isLeaf: false, left: null, right: null };
+  const edges = [];
+  const visible = [rootId];
+
+  // Trường hợp chỉ có 1 ký tự
+  const keys = Object.keys(codes);
+  if (keys.length === 1) {
+    const ch = keys[0];
+    nodes[ch] = { id: ch, f: 0, isLeaf: true, char: ch };
+    visible.push(ch);
+    // Single char, tree is just the root = leaf
+    nodes[rootId].isLeaf = true;
+    nodes[rootId].char = ch;
+    return { nodes, rootId, edges, visible };
+  }
+
+  for (const ch in codes) {
+    const bitStr = codes[ch];
+    let currentId = rootId;
+    for (let i = 0; i < bitStr.length; i++) {
+      const bit = bitStr[i];
+      const isLast = i === bitStr.length - 1;
+
+      if (isLast) {
+        // Create leaf node
+        nodes[ch] = { id: ch, f: 0, isLeaf: true, char: ch };
+        visible.push(ch);
+        if (bit === "0") {
+          nodes[currentId].left = ch;
+          edges.push({ parent: currentId, child: ch, label: "0", isLeft: true });
+        } else {
+          nodes[currentId].right = ch;
+          edges.push({ parent: currentId, child: ch, label: "1", isLeft: false });
+        }
+      } else {
+        // Navigate or create internal node
+        const direction = bit === "0" ? "left" : "right";
+        let nextId = nodes[currentId][direction];
+        if (!nextId) {
+          nextId = "__int_" + (nextInternalId++) + "__";
+          nodes[nextId] = { id: nextId, f: 0, isLeaf: false, left: null, right: null };
+          visible.push(nextId);
+          nodes[currentId][direction] = nextId;
+          edges.push({ parent: currentId, child: nextId, label: bit, isLeft: bit === "0" });
+        }
+        currentId = nextId;
+      }
+    }
+  }
+
+  // Assign positions for rendering
+  (function assign(id, x, y, off) {
+    const nd = nodes[id]; if (!nd) return;
+    nd.x = x; nd.y = y;
+    if (nd.left) assign(nd.left, x - off, y + 95, off * 0.55);
+    if (nd.right) assign(nd.right, x + off, y + 95, off * 0.55);
+  })(rootId, 500, 55, 230);
+
+  return { nodes, rootId, edges, visible };
+}
+
+/* ============================================================
+   PHÂN TÍCH BẢNG MÃ TỪ CHUỖI NHẬP
+   Chấp nhận: "A=00, B=01, C=10" hoặc "A=00\nB=01\nC=10"
+   ============================================================ */
+function parseCodeTable(raw) {
+  const codes = {};
+  const parts = raw.split(/[,\n]/);
+  for (let part of parts) {
+    part = part.trim();
+    if (!part) continue;
+    if (!part.includes("=")) throw new Error(`Sai định dạng: "${part}". Cần dạng KÝ_TỰ=MÃ (vd: A=00)`);
+    const eqIdx = part.lastIndexOf("=");
+    const ch = part.substring(0, eqIdx).trim();
+    const code = part.substring(eqIdx + 1).trim();
+    if (!ch) throw new Error(`Thiếu ký tự trong: "${part}"`);
+    if (!code) throw new Error(`Thiếu mã bit trong: "${part}"`);
+    if (!/^[01]+$/.test(code)) throw new Error(`Mã phải chỉ chứa 0 và 1: "${code}"`);
+    codes[ch] = code;
+  }
+  if (Object.keys(codes).length === 0) throw new Error("Bảng mã rỗng!");
+  return codes;
+}
+
+/* ============================================================
+   PHÂN TÍCH TOKENS LZ77 TỪ CHUỖI NHẬP
+   Chấp nhận: "(0,0,A)(0,0,B)(2,2,C)" hoặc "(0,0,A) (0,0,B)"
+   ============================================================ */
+function parseTokens(raw) {
+  const groups = raw.match(/\(([^)]*)\)/g);
+  if (!groups || groups.length === 0) throw new Error("Không tìm thấy token nào! Định dạng: (offset,length,char)");
+  const tokens = [];
+  for (const g of groups) {
+    const inner = g.slice(1, -1); // remove ( )
+    const parts = inner.split(",", 3);
+    if (parts.length < 2) throw new Error(`Token sai định dạng: ${g}`);
+    const offset = parseInt(parts[0].trim());
+    const length = parseInt(parts[1].trim());
+    if (isNaN(offset) || isNaN(length)) throw new Error(`offset/length phải là số: ${g}`);
+    let nextChar = parts.length > 2 ? parts[2].trim().replace(/^['"]|['"]$/g, "") : "";
+    tokens.push({ offset, length, nextChar });
+  }
+  return tokens;
+}
+
+/* ============================================================
+   HUFFMAN DECODE - Giải mã từng bước (từ bảng mã riêng)
+   ============================================================ */
+let huffDecodeTree = null; // { nodes, rootId, edges, visible }
+let huffDecodeBits = "";
+
+function huffmanDecodeBuildFromInput(codes, bits) {
+  const steps = [];
+
+  if (!bits || Object.keys(codes).length === 0) {
+    steps.push({ bitIndex: -1, currentNodeId: null, decoded: "", action: "Nhập chuỗi bit và bảng mã để bắt đầu.", path: [], newChar: "" });
+    huffDecodeTree = null;
+    huffDecodeBits = "";
+    return steps;
+  }
+
+  // Validate bits
+  if (!/^[01]+$/.test(bits)) {
+    steps.push({ bitIndex: -1, currentNodeId: null, decoded: "", action: "⚠ Chuỗi bit chỉ được chứa 0 và 1!", path: [], newChar: "" });
+    huffDecodeTree = null;
+    huffDecodeBits = bits;
+    return steps;
+  }
+
+  // Build tree from codes
+  const tree = buildTreeFromCodes(codes);
+  huffDecodeTree = tree;
+  huffDecodeBits = bits;
+
+  const { nodes, rootId } = tree;
+  const rootNode = nodes[rootId];
+
+  // Single char tree
+  if (rootNode && rootNode.isLeaf) {
+    let decoded = "";
+    steps.push({ bitIndex: -1, currentNodeId: rootId, decoded: "", action: "Cây chỉ có 1 ký tự. Mỗi bit '0' = 1 ký tự.", path: [], newChar: "" });
+    for (let i = 0; i < bits.length; i++) {
+      decoded += rootNode.char;
+      steps.push({ bitIndex: i, currentNodeId: rootId, decoded, action: `Bit '${bits[i]}' → ký tự '${rootNode.char}'.`, path: [rootId], newChar: rootNode.char });
+    }
+    steps.push({ bitIndex: bits.length, currentNodeId: rootId, decoded, action: "🎉 Hoàn tất giải mã Huffman!", path: [], newChar: "" });
+    return steps;
+  }
+
+  let currentId = rootId;
+  let decoded = "";
+  const path = [];
+
+  steps.push({ bitIndex: -1, currentNodeId: rootId, decoded: "", action: "Bắt đầu tại gốc cây. Đọc từng bit để duyệt.", path: [rootId], newChar: "" });
+
+  let hasError = false;
+  for (let i = 0; i < bits.length; i++) {
+    const bit = bits[i];
+    const nd = nodes[currentId];
+    if (!nd) { hasError = true; break; }
+
+    const nextId = bit === "0" ? nd.left : nd.right;
+    if (!nextId || !nodes[nextId]) {
+      steps.push({
+        bitIndex: i, currentNodeId: currentId, decoded,
+        action: `⚠ Bit '${bit}' tại vị trí ${i}: không có nhánh ${bit === "0" ? "trái" : "phải"}! Chuỗi bit không khớp bảng mã.`,
+        path: path.slice(), newChar: ""
+      });
+      hasError = true;
+      break;
+    }
+
+    path.push(nextId);
+    const nextNode = nodes[nextId];
+
+    if (nextNode && nextNode.isLeaf) {
+      decoded += nextNode.char;
+      steps.push({
+        bitIndex: i, currentNodeId: nextId, decoded,
+        action: `Bit '${bit}' → đi ${bit === "0" ? "trái" : "phải"} → lá '${nextNode.char}'. Xuất '${nextNode.char}', quay gốc.`,
+        path: path.slice(), newChar: nextNode.char
+      });
+      currentId = rootId;
+      path.length = 0;
+      path.push(rootId);
+    } else {
+      steps.push({
+        bitIndex: i, currentNodeId: nextId, decoded,
+        action: `Bit '${bit}' → đi ${bit === "0" ? "trái" : "phải"} → nút nội bộ.`,
+        path: path.slice(), newChar: ""
+      });
+      currentId = nextId;
+    }
+  }
+
+  if (!hasError) {
+    if (currentId !== rootId) {
+      steps.push({
+        bitIndex: bits.length, currentNodeId: currentId, decoded,
+        action: "⚠ Chuỗi bit kết thúc nhưng chưa về tới lá! Dữ liệu có thể bị thiếu.",
+        path: path.slice(), newChar: ""
+      });
+    } else {
+      steps.push({
+        bitIndex: bits.length, currentNodeId: rootId, decoded,
+        action: `🎉 Hoàn tất giải mã Huffman! Kết quả: "${decoded}"`,
+        path: [], newChar: ""
+      });
+    }
+  }
+
+  return steps;
 }
 
 /* ============================================================
@@ -386,6 +782,93 @@ function lz77Build(text, searchSize, lookSize) {
 }
 
 /* ============================================================
+   LZ77 DECODE - Giải mã từng bước
+   ============================================================ */
+function lz77DecodeBuild(tokens) {
+  const steps = [];
+  if (!tokens || tokens.length === 0) {
+    steps.push({ output: [], tokenIndex: -1, copyFrom: -1, copyLen: 0, newChar: "", action: "Không có token để giải mã.", tokens: [] });
+    return steps;
+  }
+
+  let output = [];
+  steps.push({
+    output: [],
+    tokenIndex: -1,
+    copyFrom: -1,
+    copyLen: 0,
+    newChar: "",
+    action: "Bắt đầu giải mã LZ77. Đọc từng token và xây dựng lại chuỗi.",
+    tokens,
+    highlightRange: null
+  });
+
+  for (let t = 0; t < tokens.length; t++) {
+    const tok = tokens[t];
+
+    if (tok.length > 0) {
+      const start = output.length - tok.offset;
+      if (start < 0) {
+        steps.push({
+          output: output.slice(), tokenIndex: t, copyFrom: -1, copyLen: 0, newChar: "",
+          action: `⚠ Token #${t + 1}: offset ${tok.offset} không hợp lệ (vượt quá dữ liệu đã giải mã)!`,
+          tokens, highlightRange: null
+        });
+        break;
+      }
+      const copied = [];
+      for (let k = 0; k < tok.length; k++) {
+        if (start + k >= output.length && start + k >= output.length) {
+          // overlapping copy
+        }
+        copied.push(output[start + k]);
+        output.push(output[start + k]);
+      }
+
+      steps.push({
+        output: output.slice(),
+        tokenIndex: t,
+        copyFrom: start,
+        copyLen: tok.length,
+        newChar: "",
+        action: `Token #${t + 1}: (${tok.offset}, ${tok.length}, '${tok.nextChar}') — Sao chép ${tok.length} ký tự '${copied.join("")}' từ vị trí lùi ${tok.offset}.`,
+        tokens,
+        highlightRange: { from: start, len: tok.length, type: "copy" }
+      });
+    }
+
+    if (tok.nextChar !== "") {
+      output.push(tok.nextChar);
+      steps.push({
+        output: output.slice(),
+        tokenIndex: t,
+        copyFrom: -1,
+        copyLen: 0,
+        newChar: tok.nextChar,
+        action: tok.length > 0
+          ? `Token #${t + 1}: Thêm ký tự kế '${tok.nextChar}'.`
+          : `Token #${t + 1}: (0, 0, '${tok.nextChar}') — Literal '${tok.nextChar}'.`,
+        tokens,
+        highlightRange: { from: output.length - 1, len: 1, type: "new" }
+      });
+    }
+  }
+
+  steps.push({
+    output: output.slice(),
+    tokenIndex: tokens.length,
+    copyFrom: -1,
+    copyLen: 0,
+    newChar: "",
+    action: `🎉 Hoàn tất giải mã LZ77! Chuỗi gốc: "${output.join("")}"`,
+    tokens,
+    highlightRange: null
+  });
+
+  return steps;
+}
+
+/* ============================================================
    PLAYER CHUNG
    ============================================================ */
 function makePlayer(prefix, render, getSteps) {
@@ -426,7 +909,7 @@ function makePlayer(prefix, render, getSteps) {
 /* ============================================================
    RENDER HUFFMAN  (palette light)
    ============================================================ */
-let huffData = { nodes: {} };
+let huffData = { nodes: {}, steps: [], root: null };
 function renderHuffman(state, idx, total) {
   if (!state) { document.getElementById("h-svg").innerHTML = ""; document.getElementById("h-action").textContent = "Nhập chuỗi."; return; }
   const nodes = huffData.nodes;
@@ -472,6 +955,85 @@ function renderHuffman(state, idx, total) {
 }
 
 /* ============================================================
+   RENDER HUFFMAN DECODE (sử dụng huffDecodeTree riêng)
+   ============================================================ */
+function renderHuffmanDecode(state, idx, total) {
+  if (!state) return;
+
+  const tree = huffDecodeTree;
+  const svgEl = document.getElementById("hd-svg");
+
+  if (!tree) {
+    svgEl.innerHTML = "";
+    document.getElementById("hd-action").textContent = state.action || "—";
+    document.getElementById("hd-bitstream").innerHTML = "";
+    document.getElementById("hd-output").innerHTML = "<span style='color:var(--muted)'>Nhập chuỗi bit và bảng mã, rồi nhấn \"Giải mã\"…</span>";
+    return;
+  }
+
+  const { nodes, rootId, edges: allEdges, visible: allVisible } = tree;
+  const pathSet = new Set(state.path || []);
+
+  let svg = "";
+
+  // Find edges on the path
+  const pathEdges = new Set();
+  const pathArr = state.path || [];
+  for (let i = 0; i < pathArr.length - 1; i++) {
+    pathEdges.add(pathArr[i] + "|" + pathArr[i + 1]);
+  }
+
+  for (const e of allEdges) {
+    const p = nodes[e.parent], c = nodes[e.child];
+    if (!p || !c || p.x == null || c.x == null) continue;
+    const onPath = pathEdges.has(e.parent + "|" + e.child) || pathEdges.has(e.child + "|" + e.parent);
+    const mx = (p.x + c.x) / 2, my = (p.y + c.y) / 2;
+    const tx = mx + (e.isLeft ? -16 : 16), ty = my - 8;
+    svg += `<line x1="${p.x}" y1="${p.y}" x2="${c.x}" y2="${c.y}" stroke="${onPath ? '#8b5cf6' : '#cbd5e1'}" stroke-width="${onPath ? 3.5 : 2}"/>`;
+    svg += `<text x="${tx}" y="${ty}" fill="${onPath ? '#7c3aed' : '#64748b'}" font-size="20" font-weight="bold" text-anchor="middle">${e.label}</text>`;
+  }
+
+  for (const id of allVisible) {
+    const nd = nodes[id];
+    if (!nd || nd.x == null) continue;
+    const onPath = pathSet.has(id);
+    const isCurrent = id === state.currentNodeId;
+    let fill = "#ffffff", stroke = "#cbd5e1";
+    const displayLabel = nd.isLeaf ? nd.char : "•";
+    if (nd.isLeaf) { fill = "#f8fafc"; stroke = "#94a3b8"; }
+    if (onPath && !isCurrent) { fill = "#ede9fe"; stroke = "#8b5cf6"; }
+    if (isCurrent && nd.isLeaf) { fill = "#fef3c7"; stroke = "#f59e0b"; }
+    else if (isCurrent) { fill = "#ddd6fe"; stroke = "#7c3aed"; }
+    svg += `<ellipse cx="${nd.x}" cy="${nd.y}" rx="42" ry="28" fill="${fill}" stroke="${stroke}" stroke-width="${isCurrent ? 4 : onPath ? 3 : 2}"/>`;
+    svg += `<text x="${nd.x}" y="${nd.y}" fill="#1e293b" font-size="18" font-family="Consolas,monospace" font-weight="bold" text-anchor="middle" dominant-baseline="central">${displayLabel}</text>`;
+  }
+
+  svgEl.innerHTML = svg;
+  document.getElementById("hd-action").textContent = state.action;
+
+  // Render bit stream
+  const bits = huffDecodeBits || "";
+  let bitsHtml = "";
+  for (let i = 0; i < bits.length; i++) {
+    let cls = "bitchar";
+    if (i < state.bitIndex) cls += " consumed";
+    else if (i === state.bitIndex) cls += " current";
+    else cls += " future";
+    bitsHtml += `<span class="${cls}">${bits[i]}</span>`;
+  }
+  document.getElementById("hd-bitstream").innerHTML = bitsHtml;
+
+  // Render decoded output
+  const decoded = state.decoded || "";
+  let outHtml = "";
+  for (let i = 0; i < decoded.length; i++) {
+    const isNew = state.newChar && i === decoded.length - 1;
+    outHtml += `<span class="decode-char ${isNew ? 'new' : 'done'}">${decoded[i]}</span>`;
+  }
+  document.getElementById("hd-output").innerHTML = outHtml || "<span style='color:var(--muted)'>Kết quả giải mã sẽ hiển thị tại đây…</span>";
+}
+
+/* ============================================================
    RENDER LZ77
    ============================================================ */
 function renderLZ77(state, idx, total) {
@@ -495,6 +1057,44 @@ function renderLZ77(state, idx, total) {
   const tb = document.querySelector("#l-tokens tbody");
   tb.innerHTML = (state.tokens || []).map((t, i) =>
     `<tr><td>${i + 1}</td><td>${t.offset}</td><td>${t.length}</td><td>'${t.nextChar}'</td></tr>`).join("");
+}
+
+/* ============================================================
+   RENDER LZ77 DECODE
+   ============================================================ */
+function renderLZ77Decode(state, idx, total) {
+  if (!state) return;
+  const output = state.output || [];
+  const hl = state.highlightRange;
+  const stream = document.getElementById("ld-stream");
+
+  let html = "";
+  for (let i = 0; i < output.length; i++) {
+    const cls = ["cell"];
+    if (hl) {
+      if (hl.type === "copy" && i >= hl.from && i < hl.from + hl.len) {
+        cls.push("copied");
+      }
+      if (hl.type === "copy" && i >= output.length - hl.len) {
+        cls.push("copied");
+      }
+      if (hl.type === "new" && i === hl.from) {
+        cls.push("newchar");
+      }
+    }
+    html += `<div class="${cls.join(' ')}"><span class="idx">${i}</span>${output[i]}</div>`;
+  }
+  stream.innerHTML = html || "<span style='color:var(--muted)'>—</span>";
+  document.getElementById("ld-action").textContent = state.action;
+
+  const tb = document.querySelector("#ld-tokens tbody");
+  tb.innerHTML = (state.tokens || []).map((t, i) => {
+    let rowCls = "";
+    if (i === state.tokenIndex) rowCls = "active-row";
+    else if (i < state.tokenIndex) rowCls = "done-row";
+    const status = i < state.tokenIndex ? "✅" : (i === state.tokenIndex ? "▶ Đang xử lý" : "⏳");
+    return `<tr class="${rowCls}"><td>${i + 1}</td><td>${t.offset}</td><td>${t.length}</td><td>'${t.nextChar}'</td><td>${status}</td></tr>`;
+  }).join("");
 }
 
 /* ============================================================
@@ -542,6 +1142,31 @@ const huffPlayer = makePlayer("h-", renderHuffman, () => {
   return huffData.steps.length ? huffData.steps : [{ visible: [], edges: [], highlighted: [], action: "Nhập chuỗi.", queue: "" }];
 });
 
+const huffDecodePlayer = makePlayer("hd-", renderHuffmanDecode, () => {
+  const bitsInput = document.getElementById("hd-bits-input").value.trim();
+  const codesInput = document.getElementById("hd-codes-input").value.trim();
+  const errEl = document.getElementById("hd-error");
+
+  if (!bitsInput || !codesInput) {
+    errEl.classList.remove("show");
+    huffDecodeTree = null;
+    huffDecodeBits = "";
+    return [{ bitIndex: -1, currentNodeId: null, decoded: "", action: "Nhập chuỗi bit và bảng mã để bắt đầu.", path: [], newChar: "" }];
+  }
+
+  try {
+    const codes = parseCodeTable(codesInput);
+    errEl.classList.remove("show");
+    return huffmanDecodeBuildFromInput(codes, bitsInput);
+  } catch (e) {
+    errEl.textContent = "⚠ " + e.message;
+    errEl.classList.add("show");
+    huffDecodeTree = null;
+    huffDecodeBits = "";
+    return [{ bitIndex: -1, currentNodeId: null, decoded: "", action: "⚠ Lỗi bảng mã: " + e.message, path: [], newChar: "" }];
+  }
+});
+
 const lzPlayer = makePlayer("l-", renderLZ77, () => {
   const text = document.getElementById("input").value;
   const searchSize = +document.getElementById("searchSize").value;
@@ -549,10 +1174,76 @@ const lzPlayer = makePlayer("l-", renderLZ77, () => {
   return lz77Build(text, searchSize, lookSize).steps;
 });
 
-function reloadAll() {
+const lzDecodePlayer = makePlayer("ld-", renderLZ77Decode, () => {
+  const tokensInput = document.getElementById("ld-tokens-input").value.trim();
+  const errEl = document.getElementById("ld-error");
+
+  if (!tokensInput) {
+    errEl.classList.remove("show");
+    return [{ output: [], tokenIndex: -1, copyFrom: -1, copyLen: 0, newChar: "", action: "Nhập danh sách token để bắt đầu.", tokens: [] }];
+  }
+
+  try {
+    const tokens = parseTokens(tokensInput);
+    errEl.classList.remove("show");
+    return lz77DecodeBuild(tokens);
+  } catch (e) {
+    errEl.textContent = "⚠ " + e.message;
+    errEl.classList.add("show");
+    return [{ output: [], tokenIndex: -1, copyFrom: -1, copyLen: 0, newChar: "", action: "⚠ Lỗi: " + e.message, tokens: [] }];
+  }
+});
+
+/* ============================================================
+   "LẤY TỪ ENCODE" buttons
+   ============================================================ */
+document.getElementById("hd-fill-from-encode").onclick = () => {
+  // Fill decode inputs from encode results
+  if (huffData && huffData.encoded) {
+    document.getElementById("hd-bits-input").value = huffData.encoded;
+  }
+  if (huffData && huffData.codes && Object.keys(huffData.codes).length > 0) {
+    const codesStr = Object.keys(huffData.codes).sort()
+      .map(ch => `${ch}=${huffData.codes[ch]}`).join(", ");
+    document.getElementById("hd-codes-input").value = codesStr;
+  }
+  huffDecodePlayer.reload();
+};
+
+document.getElementById("ld-fill-from-encode").onclick = () => {
+  // Build tokens from encode
+  const text = document.getElementById("input").value;
+  const searchSize = +document.getElementById("searchSize").value;
+  const lookSize = +document.getElementById("lookSize").value;
+  const lzResult = lz77Build(text, searchSize, lookSize);
+  const tokensStr = lzResult.tokens.map(t => `(${t.offset},${t.length},${t.nextChar})`).join(" ");
+  document.getElementById("ld-tokens-input").value = tokensStr;
+  lzDecodePlayer.reload();
+};
+
+/* ============================================================
+   "GIẢI MÃ" buttons (manual reload)
+   ============================================================ */
+document.getElementById("hd-reload-btn").onclick = () => {
+  huffDecodePlayer.reload();
+};
+document.getElementById("ld-reload-btn").onclick = () => {
+  lzDecodePlayer.reload();
+};
+
+/* ============================================================
+   RELOAD ENCODE ONLY (input change affects encode + comparison)
+   ============================================================ */
+function reloadEncode() {
   huffPlayer.reload();
   lzPlayer.reload();
   renderComparison();
+}
+
+function reloadAll() {
+  reloadEncode();
+  huffDecodePlayer.reload();
+  lzDecodePlayer.reload();
 }
 
 document.querySelectorAll(".tab").forEach(tab => {
@@ -568,11 +1259,15 @@ document.querySelectorAll(".tab").forEach(tab => {
 let deb;
 ["input", "searchSize", "lookSize"].forEach(id => {
   document.getElementById(id).addEventListener("input", () => {
-    clearTimeout(deb); deb = setTimeout(reloadAll, 250);
+    clearTimeout(deb); deb = setTimeout(reloadEncode, 250);
   });
 });
 
-reloadAll();
+// Init encode players + comparison on load
+reloadEncode();
+// Init decode players (empty state, waiting for user input)
+huffDecodePlayer.reload();
+lzDecodePlayer.reload();
 </script>
 </body>
 </html>
